@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'inz.apps.InzConfig',
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
@@ -47,6 +48,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
 ]
 
 ROOT_URLCONF = 'DjangoProject_inz.urls'
@@ -78,7 +80,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'produkcja_zlecenia',
         'USER': 'root',
-        'PASSWORD': '',
+        'PASSWORD': 'domiolik2', # tutaj jest hasło do bazy danych, ale nie każdy ma takie samo
+        # Upewnij się, że hasło jest poprawne dla Twojej konfiguracji
         'HOST': 'localhost',
         'PORT': '3306',
     }
@@ -125,3 +128,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CORS_ALLOW_ALL_ORIGINS = True  # tylko do testów!

@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Zlecenia, Comments
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from datetime import datetime, date
 import numpy as np  # Upewnij się, że numpy jest zainstalowany
 
@@ -78,3 +78,7 @@ def comments(request, zamowienie_id):
         'zamowienie_numer': zamowienie.numer,
         'comments': comments_list
     })
+
+def orders_api(request):
+    data = list(Zlecenia.objects.values()[:50])  # tylko 50 pierwszych
+    return JsonResponse(data, safe=False)
