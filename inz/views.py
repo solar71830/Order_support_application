@@ -10,7 +10,7 @@ def index(request):
     start_date = request.GET.get('start_date')
     end_date = request.GET.get('end_date')
     osoba = request.GET.get('osoba')
-
+    
     query = Zlecenia.objects.all()
 
     if start_date:

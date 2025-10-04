@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'inz.apps.InzConfig',
+    'AuthJWT.apps.AuthjwtConfig',
     "corsheaders",
 ]
 
@@ -80,7 +81,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'produkcja_zlecenia',
         'USER': 'root',
-        'PASSWORD': 'domiolik2', # tutaj jest hasło do bazy danych, ale nie każdy ma takie samo
+        'PASSWORD': 'A113bojaknietoco', # tutaj jest hasło do bazy danych, ale nie każdy ma takie samo
         # Upewnij się, że hasło jest poprawne dla Twojej konfiguracji
         'HOST': 'localhost',
         'PORT': '3306',
