@@ -8,30 +8,34 @@ import datetime
 import os
 import jwt
 
+
+@csrf_exempt
 def login(request):
     if request.method == 'POST':
         username_req = request.POST.get('username')
         password_req = request.POST.get('password')
         try:
             user_req = User.objects.get(username = username_req)
-            if (user_req.password == password_req):
+            if (str(user_req.password) == str(password_req)):
+                temp_id = str(user_req.id)
+                temp_username = str(user_req.username)
                 payload = {
-                    "id": str(user_req.id),
-                    "username": user_req.username,
+                    "id": temp_id,
+                    "username": temp_username,
                     "iat": datetime.datetime.now(),
-                    "exp": datetime.datetime.now() - datetime.timedelta(minutes=30),
-                    "alg": "HS256"
+                    "exp": datetime.datetime.now() + datetime.timedelta(minutes=30),
+                    
 
                 }
                 private_key =os.environ.get("SECRET_KEY")
-                jwt_key = jwt.encode(payload,key=private_key,algorithm="HS256")
+                jwt_key = jwt.encode(payload,key=str(private_key),algorithm="HS256")
             else:
                 return HttpResponse("Nieprawidłowe hasło",status=400)
         except User.DoesNotExist:
             return HttpResponse("Nie znaleziono użytkownika",status=400)
         
         
-        return JsonResponse(jwt_key,status=200)
+        return JsonResponse({"token":jwt_key},status=200)
     else:
 
         return HttpResponse("Nieprawidłowe żądanie", status=200)
