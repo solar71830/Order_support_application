@@ -1,5 +1,6 @@
 from django.db import models
 import uuid
+import time
 
 
 class User (models.Model):
@@ -8,10 +9,20 @@ class User (models.Model):
     email = models.EmailField(max_length=150,unique=True)
     password = models.CharField(max_length=150)
     position = models.CharField(max_length=150,null = True,blank=True)
+    class Meta:
+        db_table = 'authjwt_user'
 
-class Meta (models.Model):
-    db_table = 'authjwt_user'
-    
+def current_unix_t():
+    return time.time()
+
+class Blacklisted_jwt(models.Model):
+    id =  models.BigAutoField(primary_key=True)
+    jwt_token= models.TextField(max_length=512, unique=True,null=False)
+    iat = models.BigIntegerField(default=current_unix_t())
+    class Meta:
+        db_table = 'authjwt_blacklisted'
+
+
 
 
 

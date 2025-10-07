@@ -3,7 +3,7 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from .models import User
+from .models import User,Blacklisted_jwt
 import datetime
 import time
 #import os
@@ -70,7 +70,10 @@ def register(request):
     else:
         return HttpResponse("Nieprawidłowe żądanie", status=400)
 
-def logout(request):
+
+
+        
+
     return HttpResponse("Nieprawidłowe żądanie", status=400)
 # dodać blacklist dla zużytych tokenów który cyklicznie się czyści
 
@@ -79,6 +82,9 @@ def jwt_required(func): # wrapper dla zabezpieczenia urli
         auth_header = request.headers.get("Authorization")
         if not auth_header:
             return JsonResponse({"error": "Brak nagłówka autoryzacji"})
+        check_token = Blacklisted_jwt.objects.filter(jwt_token=auth_header).exists()
+        if check_token:
+            return JsonResponse({"error":"Przedawniony token"})
         if(auth_header.startswith("Bearer")):
             token = auth_header.split(" ")[1] #dla Bearer ...token...
         else:
@@ -107,6 +113,19 @@ def account_info(request):
          return JsonResponse({"info":str(data)},status = 200)
     else:
          return HttpResponse("Nieprawidłowe żądanie", status=400)
+    
+
+@csrf_exempt
+@jwt_required
+def logout(request):
+    if request.method == "POST":
+        auth_header = request.headers.get("Authorization")
+        token = Blacklisted_jwt.objects.filter(jwt_token=auth_header).exists()
+        if not token:
+            Blacklisted_jwt.objects.create(jwt_token=token)
+            return HttpResponse("Pomyślnie wylogowano", status=200)
+        else:
+            return HttpResponse("Błąd: Token znajduje się w bazie przedawnionych tokenów",status=400)
 
 
 def is_email_valid(email: str) -> bool:
