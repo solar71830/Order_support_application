@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, QueryDict
 from django.views.decorators.csrf import csrf_exempt
 from .models import User,Blacklisted_jwt
 import datetime
@@ -69,12 +69,7 @@ def register(request):
             return HttpResponse("Wprowadzono nieprawidłowe dane", status=400)
     else:
         return HttpResponse("Nieprawidłowe żądanie", status=400)
-
-
-
-        
-
-    return HttpResponse("Nieprawidłowe żądanie", status=400)
+    
 # dodać blacklist dla zużytych tokenów który cyklicznie się czyści
 
 def jwt_required(func): # wrapper dla zabezpieczenia urli
@@ -109,10 +104,56 @@ def account_info(request):
     if request.method =='GET':
          jwt_payload = getattr(request, 'jwt_payload', None)
          username_req = jwt_payload.get("name")
-         data = User.objects.get(username =username_req)
+         data = User.objects.get(username=username_req)
          return JsonResponse({"info":str(data)},status = 200)
     else:
          return HttpResponse("Nieprawidłowe żądanie", status=400)
+    
+@csrf_exempt
+@jwt_required
+def account_edit(request):
+    if request.method=='POST':
+        
+        username_data = request.POST.get("username")
+        email_new = request.POST.get("email")
+        password_new = request.POST.get("password")
+        position_new= request.POST.get("password")
+        print(username_data,email_new,password_new,position_new)
+        data = {}
+        if User.objects.filter(username=username_data).exists():
+            id_obj = User.objects.get(username=username_data)
+            if email_new:
+                data["email"] = email_new
+            if password_new:
+                data["password"] = password_new
+            if position_new:
+                data["position"] = position_new
+            if data:
+                User.objects.filter(username=username_data).update(**data)
+                return HttpResponse("Zaktualizowano dane użytkownika",status=200)
+            else:
+                return HttpResponse("Brak danych do zaktualizowania", status=400)
+        else:
+            return HttpResponse("Nie znaleziono użytkownika", status=401)
+            
+    else:
+        return HttpResponse("Błąd", status=400)
+
+@csrf_exempt
+@jwt_required
+def account_delete(request):
+        if request.method=='PUT':
+            username_data = request.body.get("username")
+            if User.objects.filter(username=username_data).exists():
+                User.objects.delete(id = username_data.id)
+                return HttpResponse("Pomyślnie usunięto użytkownika", status=200)
+            else:
+                return HttpResponse("Nie znaleziono użytkownika", status=404)
+
+            
+        else:
+            return HttpResponse("Błąd",status=400)
+
     
 
 @csrf_exempt
