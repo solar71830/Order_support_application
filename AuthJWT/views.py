@@ -142,10 +142,10 @@ def account_edit(request):
 @csrf_exempt
 @jwt_required
 def account_delete(request):
-        if request.method=='PUT':
-            username_data = request.body.get("username")
+        if request.method=='POST':
+            username_data = request.POST.get("username")
             if User.objects.filter(username=username_data).exists():
-                User.objects.delete(id = username_data.id)
+                User.objects.filter(username= username_data).delete()
                 return HttpResponse("Pomyślnie usunięto użytkownika", status=200)
             else:
                 return HttpResponse("Nie znaleziono użytkownika", status=404)
