@@ -1,13 +1,18 @@
 import React from "react";
 import "../App.css";
 
-export default function Template({ active, setActive, children }) {
+export default function Template({ active, setActive, children, userInfo }) {
   const menu = [
     { label: "TABELA ZAMÓWIEŃ", key: "orders" },
     { label: "KONTROLA PRACY", key: "work" },
     { label: "AKTUALNOŚCI", key: "news" },
     { label: "RAPORTY", key: "reports" },
-  ];
+    { label: "INFORMACJE O KONCIE", key: "account" },
+    ];
+
+    if (userInfo && userInfo.role === "admin") {
+        menu.push({ label: "UŻYTKOWNICY", key: "manageusers" });
+    }
 
   return (
     <div>
@@ -20,7 +25,7 @@ export default function Template({ active, setActive, children }) {
             className={`topbar-link${active === item.key ? " active" : ""}`}
             onClick={e => {
               e.preventDefault();
-              setActive(item.key);
+                setActive(item.key);
             }}
           >
             {item.label}

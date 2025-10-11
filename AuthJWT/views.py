@@ -51,6 +51,12 @@ def login(request):
 
 @csrf_exempt
 def register(request):
+    # SUPERUSER - do sprawdzenia czy uzytkoiwnik moze korzystac z opcji tworzenia konta
+    jwt_payload = getattr(request, 'jwt_payload', None)
+    username_req = jwt_payload.get("name")
+    user = User.objects.get(username=username_req)
+    if user.role != "admin":
+        return HttpResponse("Brak uprawnień", status=403)
     if request.method =='POST':
         try:
             username_new = request.POST.get('username')
@@ -104,8 +110,16 @@ def account_info(request):
     if request.method =='GET':
          jwt_payload = getattr(request, 'jwt_payload', None)
          username_req = jwt_payload.get("name")
-         data = User.objects.get(username=username_req)
-         return JsonResponse({"info":str(data)},status = 200)
+         user = User.objects.get(username=username_req)
+         return JsonResponse({
+            "info": {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "position": user.position,
+                "role": user.role
+            }
+        }, status=200)
     else:
          return HttpResponse("Nieprawidłowe żądanie", status=400)
     
@@ -178,3 +192,18 @@ def is_email_valid(email: str) -> bool:
 
 
 # Create your views here.
+
+#lista uzytkiownikow
+@csrf_exempt
+@jwt_required
+def users_list(request):
+    if request.method == 'GET':
+        jwt_payload = getattr(request, 'jwt_payload', None)
+        username_req = jwt_payload.get("name")
+        user = User.objects.get(username=username_req)
+        if user.role != "admin":
+            return HttpResponse("Brak uprawnień", status=403)
+        users = User.objects.all().values("username")
+        return JsonResponse({"users": list(users)}, status=200)
+    else:
+        return HttpResponse("Nieprawidłowe żądanie", status=400)
