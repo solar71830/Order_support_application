@@ -25,7 +25,7 @@ export default function Login({ onLogin }) {
                 setError(text);
             }
         } catch (err) {
-            setError("B³¹d po³¹czenia z serwerem");
+            setError("BÅ‚Ä…d poÅ‚Ä…czenia z serwerem");
         }
     };
 
@@ -34,14 +34,14 @@ export default function Login({ onLogin }) {
             <h2>Logowanie</h2>
             <input
                 type="text"
-                placeholder="Nazwa uzytkownika"
+                placeholder="Nazwa uÅ¼ytkownika"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required
             />
             <input
                 type="password"
-                placeholder="Haslo"
+                placeholder="HasÅ‚o"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required

@@ -21,18 +21,18 @@ export default function DeleteUser({ token, users }) {
             const text = await res.text();
             setMessage(text);
         } catch (err) {
-            setMessage("B³¹d po³¹czenia z serwerem");
+            setMessage("BÅ‚Ä…d poÅ‚Ä…czenia z serwerem");
         }
     };
 
     return (
         <form onSubmit={handleSubmit} className="user-form">
-            <h2>Usuwanie u¿ytkownika</h2>
+            <h2>Usuwanie uÅ¼ytkownika</h2>
             <select value={username} onChange={e => setUsername(e.target.value)} required>
-                <option value="">Wybierz u¿ytkownika</option>
+                <option value="">Wybierz uÅ¼ytkownika</option>
                 {users.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
-            <button type="submit" className="blue-btn form-btn">Usuñ u¿ytkownika</button>
+            <button type="submit" className="blue-btn form-btn">UsuÅ„ uÅ¼ytkownika</button>
             {message && <div>{message}</div>}
         </form>
     );

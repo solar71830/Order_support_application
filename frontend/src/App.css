@@ -344,3 +344,46 @@ th, td {
         background: #7ed6fb;
         color: #222 !important;
     }
+
+.navbar {
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  background-color: #007bff; /* Kolor tła */
+  padding: 16px 0;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.navbar a {
+  color: white;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.navbar a:hover {
+  text-decoration: underline;
+}
+
+.navbar h1 {
+  color: white;
+  font-size: 24px;
+  margin: 0;
+}
+
+.report-btn {
+  background: #38b6ff; /* Kolor tła */
+  color: #fff !important; /* Biały tekst */
+  border: none;
+  padding: 12px 24px; /* Większe odstępy dla spójności */
+  border-radius: 8px; /* Zaokrąglone rogi */
+  font-size: 1rem; /* Rozmiar tekstu */
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s; /* Animacja zmiany koloru */
+}
+
+.report-btn:hover {
+  background: #7ed6fb; /* Jaśniejszy kolor tła po najechaniu */
+  color: #222 !important; /* Ciemniejszy tekst po najechaniu */
+}

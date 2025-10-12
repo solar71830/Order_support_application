@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from .views import comments
 
 
 urlpatterns = [
@@ -7,5 +8,5 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('comments/<int:zamowienie_id>/', views.comments, name='comments'),
     path('api/orders/', views.orders_api, name='orders_api'),  # <-- DODAJ TO
-    
+    path("api/comments/", comments, name="comments"),
 ]

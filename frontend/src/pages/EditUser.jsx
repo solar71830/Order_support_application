@@ -27,20 +27,20 @@ export default function EditUser({ token, users }) {
             const text = await res.text();
             setMessage(text);
         } catch (err) {
-            setMessage("B³¹d po³¹czenia z serwerem");
+            setMessage("BÅ‚Ä…d poÅ‚Ä…czenia z serwerem");
         }
     };
 
     return (
         <form onSubmit={handleSubmit} className="user-form">
-            <h2>Edycja u¿ytkownika</h2>
+            <h2>Edycja uÅ¼ytkownika</h2>
             <select value={username} onChange={e => setUsername(e.target.value)} required>
-                <option value="">Wybierz u¿ytkownika</option>
+                <option value="">Wybierz uÅ¼ytkownika</option>
                 {users.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
             <input
                 type="text"
-                placeholder="Nazwa u¿ytkownika"
+                placeholder="Nazwa uÅ¼ytkownika"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required
@@ -53,7 +53,7 @@ export default function EditUser({ token, users }) {
             />
             <input
                 type="password"
-                placeholder="Nowe has³o (opcjonalnie)"
+                placeholder="Nowe hasÅ‚o (opcjonalnie)"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
             />
@@ -63,7 +63,7 @@ export default function EditUser({ token, users }) {
                 value={position}
                 onChange={e => setPosition(e.target.value)}
             />
-            <button type="submit" className="blue-btn form-btn">Edytuj u¿ytkownika</button>
+            <button type="submit" className="blue-btn form-btn">Edytuj uÅ¼ytkownika</button>
             {message && <div>{message}</div>}
         </form>
     );

@@ -14,7 +14,7 @@ export default function AccountInfo({ token }) {
             .then(async (res) => {
                 if (!res.ok) {
                     const text = await res.text();
-                    throw new Error(text || "B≥πd serwera");
+                    throw new Error(text || "B≈ÇƒÖd serwera");
                 }
                 return res.json();
             })
@@ -34,7 +34,7 @@ export default function AccountInfo({ token }) {
                     <p><strong>Stanowisko:</strong> {info.position}</p>
                 </div>
             ) : (
-                <div>£adowanie...</div>
+                <div>≈Åadowanie...</div>
             )}
         </div>
     );

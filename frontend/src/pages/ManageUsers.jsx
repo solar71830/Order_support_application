@@ -19,11 +19,11 @@ export default function ManageUsers({ token }) {
 
     return (
         <div className="white-box">
-            <h2>Zarzπdzanie uøytkownikami</h2>
+            <h2>ZarzƒÖdzanie u≈ºytkownikami</h2>
             <div className="user-btn-group">
-                <button onClick={() => setView("add")} className="blue-btn">Dodaj uøytkownika</button>
-                <button onClick={() => setView("edit")} className="blue-btn">Edytuj uøytkownika</button>
-                <button onClick={() => setView("delete")} className="blue-btn">UsuÒ uøytkownika</button>
+                <button onClick={() => setView("add")} className="blue-btn">Dodaj u≈ºytkownika</button>
+                <button onClick={() => setView("edit")} className="blue-btn">Edytuj u≈ºytkownika</button>
+                <button onClick={() => setView("delete")} className="blue-btn">Usu≈Ñ u≈ºytkownika</button>
             </div>
             {view === "add" && <Register />}
             {view === "edit" && <EditUser token={token} users={users} />}

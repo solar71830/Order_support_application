@@ -81,8 +81,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'produkcja_zlecenia',
         'USER': 'root',
-        'PASSWORD': '', # tutaj jest hasło do bazy danych, ale nie każdy ma takie samo
-        # Upewnij się, że hasło jest poprawne dla Twojej konfiguracji
+        #'PASSWORD': '' #jeśli nie ma się hasła, to odkomentować to zakomwentoweać linijkę niżej
+        'PASSWORD': 'domiolik2', # jeśli to jest moje hasło - Oliwia - zostawić tak jak jest inaczej wykomentować 
+        #ale prosze nie usuwajcie, bo mi się nie chce za każdym razem sprawdzać jakie mam hasło do bazy
         'HOST': 'localhost',
         'PORT': '3306',
     }

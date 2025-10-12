@@ -4,6 +4,10 @@ import "../App.css";
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [comment, setComment] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/orders/")
@@ -14,6 +18,64 @@ export default function OrdersPage() {
       });
   }, []);
 
+  const handleSort = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+
+    const sortedOrders = [...orders].sort((a, b) => {
+      if (a[key] < b[key]) {
+        return direction === "asc" ? -1 : 1;
+      }
+      if (a[key] > b[key]) {
+        return direction === "asc" ? 1 : -1;
+      }
+      return 0;
+    });
+    setOrders(sortedOrders);
+  };
+
+  const getSortIndicator = (key) => {
+    if (sortConfig.key === key) {
+      return sortConfig.direction === "asc" ? "▲" : "▼";
+    }
+    return "▲▼";
+  };
+
+  const handleAddComment = () => {
+    if (!selectedOrder) return;
+
+    const formData = new FormData();
+    formData.append("comment", comment); // Treść komentarza
+    formData.append("deadline", new Date().toISOString().split("T")[0]); // Automatyczna dzisiejsza data
+
+    fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
+      method: "POST",
+      body: formData,
+    })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error("Błąd podczas dodawania komentarza");
+        }
+        return res.json();
+      })
+      .then(() => {
+        alert("Komentarz został dodany!");
+        setShowModal(false);
+        setComment("");
+        // Opcjonalnie: odśwież dane zamówień
+        fetch("http://127.0.0.1:8000/api/orders/")
+          .then(res => res.json())
+          .then(data => setOrders(data));
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Wystąpił błąd podczas dodawania komentarza.");
+      });
+  };
+
   if (loading) return <div>Ładowanie...</div>;
   if (!orders.length) return <div>Brak zamówień.</div>;
 
@@ -23,7 +85,7 @@ export default function OrdersPage() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        marginTop: "32px",
+        marginTop: "52px",
       }}
     >
       <h2
@@ -49,13 +111,23 @@ export default function OrdersPage() {
         >
           <thead>
             <tr>
-              <th>Numer Zamówienia</th>
-              <th>Osoba</th>
-              <th>Wartość Zamówienia</th>
-              <th style={{ minWidth: "180px" }}>Termometr</th>
+              <th onClick={() => handleSort("numer")} style={{ cursor: "pointer" }}>
+                Numer Zamówienia {getSortIndicator("numer")}
+              </th>
+              <th onClick={() => handleSort("osoba")} style={{ cursor: "pointer" }}>
+                Osoba {getSortIndicator("osoba")}
+              </th>
+              <th onClick={() => handleSort("cena")} style={{ cursor: "pointer" }}>
+                Wartość Zamówienia {getSortIndicator("cena")}
+              </th>
+              <th onClick={() => handleSort("timeline_progress_scaled")} style={{ cursor: "pointer" }}>
+                Termometr {getSortIndicator("timeline_progress_scaled")}
+              </th>
               <th>Komentarze</th>
               <th>Deadline</th>
-              <th>Status</th>
+              <th onClick={() => handleSort("status")} style={{ cursor: "pointer" }}>
+                Status {getSortIndicator("status")}
+              </th>
               <th>Dodaj Komentarz</th>
             </tr>
           </thead>
@@ -150,9 +222,10 @@ export default function OrdersPage() {
                 <td>
                   <button
                     className="btn btn-primary btn-sm"
-                    onClick={() =>
-                      alert("Przejdź do komentarzy zamówienia " + order.numer)
-                    }
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      setShowModal(true);
+                    }}
                   >
                     Dodaj Komentarz
                   </button>
@@ -162,6 +235,86 @@ export default function OrdersPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Modal */}
+      {showModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "20px",
+              borderRadius: "8px",
+              width: "500px", // Poszerzenie okienka
+              boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+            }}
+          >
+            <h3 style={{ marginBottom: "20px", textAlign: "center", color: "#111" }}>
+              Komentarz do zamówienia: <strong>{selectedOrder.numer}</strong>
+            </h3>
+            <textarea
+              value={comment}
+              onChange={e => setComment(e.target.value)}
+              placeholder="Dodaj komentarz"
+              style={{
+                width: "90%",
+                height: "100px",
+                marginBottom: "20px",
+                padding: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                backgroundColor: "#fff", // Białe tło
+                color: "#111", // Czarna czcionka
+                resize: "none",
+              }}
+            ></textarea>
+            <input
+              type="text"
+              value={new Date().toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" })} // Format: DD-MM-RRRR
+              readOnly
+              style={{
+                width: "90%",
+                marginBottom: "20px",
+                padding: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                backgroundColor: "#f8f9fa",
+                color: "#111", // Czarny tekst dla lepszej widoczności
+                fontWeight: "bold",
+                cursor: "not-allowed",
+              }}
+            />
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleAddComment}
+                style={{ width: "48%" }}
+              >
+                Dodaj
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowModal(false)}
+                style={{ width: "48%" }}
+              >
+                Zamknij
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -24,7 +24,7 @@ export default function Register() {
             const text = await res.text();
             setMessage(text);
         } catch (err) {
-            setMessage("B³¹d po³¹czenia z serwerem");
+            setMessage("BÅ‚Ä…d poÅ‚Ä…czenia z serwerem");
         }
     };
 
@@ -33,14 +33,14 @@ export default function Register() {
             <h2>Rejestracja</h2>
             <input
                 type="text"
-                placeholder="Nazwa uzytkownika"
+                placeholder="Nazwa uÅ¼ytkownika"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
                 required
             />
             <input
                 type="password"
-                placeholder="Haslo"
+                placeholder="HasÅ‚o"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required

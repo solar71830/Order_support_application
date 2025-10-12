@@ -9,6 +9,7 @@ import time
 #import os
 import jwt
 #import base64
+from django.contrib.auth import authenticate
 
 
 @csrf_exempt
@@ -207,3 +208,14 @@ def users_list(request):
         return JsonResponse({"users": list(users)}, status=200)
     else:
         return HttpResponse("Nieprawidłowe żądanie", status=400)
+
+def login_view(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        user = authenticate(username=username, password=password)
+        if user:
+            return JsonResponse({"message": "Login successful"})
+        else:
+            return JsonResponse({"error": "Invalid credentials"}, status=401)
+    return JsonResponse({"error": "Invalid request method"}, status=405)

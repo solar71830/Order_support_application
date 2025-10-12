@@ -18,7 +18,8 @@ def current_unix_t():
 
 class Blacklisted_jwt(models.Model):
     id =  models.BigAutoField(primary_key=True)
-    jwt_token= models.TextField(max_length=512, unique=True,null=False)
+    #jwt_token= models.TextField(max_length=512, unique=True,null=False)
+    jwt_token = models.CharField(max_length=512, unique=True, null=False) # zostawić na MySQL bo inaczej nie działa, proszę 
     iat = models.BigIntegerField(default=current_unix_t())
     class Meta:
         db_table = 'authjwt_blacklisted'

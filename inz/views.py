@@ -1,8 +1,10 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from .models import Zlecenia, Comments
-from django.http import HttpResponse, JsonResponse
-from datetime import datetime, date
+from django.shortcuts import get_object_or_404, redirect, render
+from django.http import JsonResponse
+from .models import Comments, Zlecenia
+import logging
 import numpy as np  # Upewnij się, że numpy jest zainstalowany
+
+logger = logging.getLogger(__name__)
 
 def index(request):
     today = datetime.now()
@@ -66,18 +68,22 @@ def comments(request, zamowienie_id):
     if request.method == 'POST':
         text = request.POST.get('comment')
         deadline = request.POST.get('deadline')
+        
+        # Logowanie danych
+        logger.info(f"Received data: comment={text}, deadline={deadline}")
+        
         if text:
             Comments.objects.create(
                 zamowienie=zamowienie,
                 text=text,
                 deadline=deadline if deadline else None
             )
-            return redirect('comments', zamowienie_id=zamowienie_id)
-    comments_list = Comments.objects.filter(zamowienie=zamowienie)
-    return render(request, 'comments.html', {
-        'zamowienie_numer': zamowienie.numer,
-        'comments': comments_list
-    })
+            return JsonResponse({"message": "Komentarz został dodany!"})
+        return JsonResponse({"error": "Treść komentarza jest wymagana!"}, status=400)
+    elif request.method == 'GET':
+        comments_list = Comments.objects.filter(zamowienie=zamowienie).values("id", "text", "date", "deadline")
+        return JsonResponse(list(comments_list), safe=False)
+    return JsonResponse({"error": "Nieprawidłowa metoda HTTP!"}, status=405)
 
 def orders_api(request):
     data = list(Zlecenia.objects.values()[:50])  # tylko 50 pierwszych
