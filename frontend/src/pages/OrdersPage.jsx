@@ -8,11 +8,14 @@ export default function OrdersPage() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [comment, setComment] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [searchTerm, setSearchTerm] = useState(""); // Wyszukiwanie
+  const [showAddOrderModal, setShowAddOrderModal] = useState(false); // Modal dodania zamówienia
+  const [newOrder, setNewOrder] = useState({ numer: "", osoba: "", cena: 0, status: "Oczekiwanie" }); // Formularz dodania zamówienia
 
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/orders/")
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setOrders(data);
         setLoading(false);
       });
@@ -55,7 +58,7 @@ export default function OrdersPage() {
       method: "POST",
       body: formData,
     })
-      .then(res => {
+      .then((res) => {
         if (!res.ok) {
           throw new Error("Błąd podczas dodawania komentarza");
         }
@@ -67,14 +70,52 @@ export default function OrdersPage() {
         setComment("");
         // Opcjonalnie: odśwież dane zamówień
         fetch("http://127.0.0.1:8000/api/orders/")
-          .then(res => res.json())
-          .then(data => setOrders(data));
+          .then((res) => res.json())
+          .then((data) => setOrders(data));
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
         alert("Wystąpił błąd podczas dodawania komentarza.");
       });
   };
+
+  const handleAddOrder = () => {
+    const formData = new FormData();
+    formData.append("numer", newOrder.numer);
+    formData.append("osoba", newOrder.osoba);
+    formData.append("cena", newOrder.cena);
+    formData.append("status", newOrder.status);
+
+    fetch("http://127.0.0.1:8000/api/orders/", {
+      method: "POST",
+      body: formData,
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Błąd podczas dodawania zamówienia");
+        }
+        return res.json();
+      })
+      .then(() => {
+        alert("Zamówienie zostało dodane!");
+        setShowAddOrderModal(false);
+        setNewOrder({ numer: "", osoba: "", cena: 0, status: "Oczekiwanie" });
+        // Odśwież dane zamówień
+        fetch("http://127.0.0.1:8000/api/orders/")
+          .then((res) => res.json())
+          .then((data) => setOrders(data));
+      })
+      .catch((err) => {
+        console.error(err);
+        alert("Wystąpił błąd podczas dodawania zamówienia.");
+      });
+  };
+
+  const filteredOrders = orders.filter(
+    (order) =>
+      (order.numer || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.osoba || "").toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) return <div>Ładowanie...</div>;
   if (!orders.length) return <div>Brak zamówień.</div>;
@@ -94,6 +135,48 @@ export default function OrdersPage() {
       >
         Tabela Zamówień
       </h2>
+
+      {/* Okienko wyszukiwania */}
+      <div
+        style={{
+          width: "90%",
+          marginBottom: "20px",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <input
+          type="text"
+          placeholder="Wyszukaj zamówienie po numerze lub osobie..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{
+            width: "45%",
+            padding: "10px",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            backgroundColor: "#fff",
+            color: "#111",
+          }}
+        />
+
+        {/* Dodanie zamówienia */}
+        <button
+          onClick={() => setShowAddOrderModal(true)}
+          style={{
+            backgroundColor: "#38b6ff",
+            color: "#fff",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            cursor: "pointer",
+          }}
+        >
+          Dodaj Zamówienie
+        </button>
+      </div>
+
+      {/* Tabela zamówień */}
       <div
         style={{
           width: "100%",
@@ -132,7 +215,7 @@ export default function OrdersPage() {
             </tr>
           </thead>
           <tbody>
-            {orders.slice(0, 50).map(order => (
+            {filteredOrders.slice(0, 50).map((order) => (
               <tr key={order.id}>
                 <td>{order.numer || order.id}</td>
                 <td>{order.osoba || "Brak"}</td>
@@ -205,7 +288,7 @@ export default function OrdersPage() {
                   <select
                     value={order.status || "Brak"}
                     className="form-select"
-                    onChange={e => {
+                    onChange={(e) => {
                       alert(
                         `Zmieniono status zamówienia ${order.numer} na ${e.target.value}`
                       );
@@ -236,6 +319,116 @@ export default function OrdersPage() {
         </table>
       </div>
 
+      {/* Modal dodania zamówienia */}
+      {showAddOrderModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              padding: "20px",
+              borderRadius: "8px",
+              width: "500px",
+              boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+            }}
+          >
+            <h3 style={{ marginBottom: "20px", textAlign: "center", color: "#111" }}>
+              Dodaj nowe zamówienie
+            </h3>
+            <input
+              type="text"
+              placeholder="Numer zamówienia"
+              value={newOrder.numer}
+              onChange={(e) => setNewOrder({ ...newOrder, numer: e.target.value })}
+              style={{
+                width: "90%",
+                marginBottom: "10px",
+                padding: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                color: "#111",
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Osoba"
+              value={newOrder.osoba}
+              onChange={(e) => setNewOrder({ ...newOrder, osoba: e.target.value })}
+              style={{
+                width: "90%",
+                marginBottom: "10px",
+                padding: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                color: "#111",
+              }}
+            />
+            <input
+              type="number"
+              placeholder="Cena"
+              value={newOrder.cena}
+              onChange={(e) => setNewOrder({ ...newOrder, cena: e.target.value })}
+              style={{
+                width: "90%",
+                marginBottom: "10px",
+                padding: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                color: "#111",
+              }}
+            />
+            <select
+              value={newOrder.status}
+              onChange={(e) => setNewOrder({ ...newOrder, status: e.target.value })}
+              style={{
+                width: "90%",
+                marginBottom: "20px",
+                padding: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                backgroundColor: "#fff",
+                color: "#111",
+              }}
+            >
+              <option value="Oczekiwanie">Oczekiwanie</option>
+              <option value="W trakcie">W trakcie</option>
+              <option value="Zrealizowane">Zrealizowane</option>
+            </select>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <button
+                className="btn btn-primary"
+                onClick={handleAddOrder}
+                style={{ width: "48%" }}
+              >
+                Dodaj
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowAddOrderModal(false)}
+                style={{ width: "48%" }}
+              >
+                Zamknij
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal */}
       {showModal && (
         <div
@@ -257,7 +450,7 @@ export default function OrdersPage() {
               backgroundColor: "white",
               padding: "20px",
               borderRadius: "8px",
-              width: "500px", // Poszerzenie okienka
+              width: "500px",
               boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
             }}
           >
@@ -266,7 +459,7 @@ export default function OrdersPage() {
             </h3>
             <textarea
               value={comment}
-              onChange={e => setComment(e.target.value)}
+              onChange={(e) => setComment(e.target.value)}
               placeholder="Dodaj komentarz"
               style={{
                 width: "90%",
@@ -275,14 +468,18 @@ export default function OrdersPage() {
                 padding: "10px",
                 border: "1px solid #ccc",
                 borderRadius: "4px",
-                backgroundColor: "#fff", // Białe tło
-                color: "#111", // Czarna czcionka
+                backgroundColor: "#fff",
+                color: "#111",
                 resize: "none",
               }}
             ></textarea>
             <input
               type="text"
-              value={new Date().toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" })} // Format: DD-MM-RRRR
+              value={new Date().toLocaleDateString("pl-PL", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })}
               readOnly
               style={{
                 width: "90%",
@@ -291,7 +488,7 @@ export default function OrdersPage() {
                 border: "1px solid #ccc",
                 borderRadius: "4px",
                 backgroundColor: "#f8f9fa",
-                color: "#111", // Czarny tekst dla lepszej widoczności
+                color: "#111",
                 fontWeight: "bold",
                 cursor: "not-allowed",
               }}

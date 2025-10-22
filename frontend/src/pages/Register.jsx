@@ -23,7 +23,8 @@ export default function Register() {
             });
             const text = await res.text();
             setMessage(text);
-        } catch (err) {
+        } catch (error) {
+            console.error(error);
             setMessage("Błąd połączenia z serwerem");
         }
     };
