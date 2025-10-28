@@ -29,15 +29,83 @@ export default function ReportsPage() {
       .catch((err) => console.error("Błąd podczas pobierania zamówień:", err));
   }, []);
 
-  const handleGenerateReport = () => {
-    if (reportType === "employee") {
-      console.log("Generowanie raportu pracownika:", selectedEmployees, startDate, endDate);
-      alert(`Raport pracownika wygenerowany dla: ${selectedEmployees.join(", ")} w okresie od ${startDate} do ${endDate}`);
-    } else if (reportType === "order") {
-      console.log("Generowanie raportu zamówienia:", selectedOrders);
-      alert(`Raport zamówienia wygenerowany dla: ${selectedOrders.join(", ")}`);
-    }
-  };
+    const handleGenerateReport = () => {
+        console.log("Generowanie raportu rozpoczęte:", { reportType, selectedEmployees, selectedOrders });
+
+        // Usuń duplikaty
+        const uniqueEmployees = [...new Set(selectedEmployees)];
+        const uniqueOrders = [...new Set(selectedOrders)];
+
+        if (reportType === "employee") {
+            if (uniqueEmployees.length === 0 || !startDate || !endDate) {
+                alert("Wybierz pracownika i okres!");
+                return;
+            }
+
+            uniqueEmployees.forEach((employeeName) => {
+                console.log(`Generowanie raportu dla pracownika: ${employeeName}`);
+                fetch(
+                    `http://127.0.0.1:8000/user-report/?user_id=${encodeURIComponent(employeeName)}&start_date=${startDate}&end_date=${endDate}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            Authorization: "Bearer " + localStorage.getItem("jwtToken"),
+                        },
+                    }
+                )
+                    .then((res) => {
+                        if (!res.ok) throw new Error("Błąd generowania raportu");
+                        return res.blob();
+                    })
+                    .then((blob) => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `Raport_Pracownika_${employeeName}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                    })
+                    .catch((err) => alert(err.message));
+            });
+        } else if (reportType === "order") {
+            if (uniqueOrders.length === 0) {
+                alert("Wybierz zamówienie!");
+                return;
+            }
+
+            uniqueOrders.forEach((orderId) => {
+                console.log(`Generowanie raportu dla zamówienia: ${orderId}`);
+                fetch(
+                    `http://127.0.0.1:8000/order-report/?order_id=${encodeURIComponent(orderId)}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            Authorization: "Bearer " + localStorage.getItem("jwtToken"),
+                        },
+                    }
+                )
+                    .then((res) => {
+                        if (!res.ok) throw new Error("Błąd generowania raportu");
+                        return res.blob();
+                    })
+                    .then((blob) => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = `Raport_Zamowienia_${orderId}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                    })
+                    .catch((err) => alert(err.message));
+            });
+        }
+    };
+
+
 
   return (
     <div className="white-box">
@@ -96,13 +164,14 @@ export default function ReportsPage() {
                   <input
                     type="checkbox"
                     value={employee.name}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedEmployees((prev) => [...prev, employee.name]);
-                      } else {
-                        setSelectedEmployees((prev) => prev.filter((emp) => emp !== employee.name));
-                      }
-                    }}
+                          onChange={(e) => {
+                              if (e.target.checked) {
+                                  setSelectedEmployees((prev) => [...new Set([...prev, employee.name])]); // Zapobieganie duplikatom
+                              } else {
+                                  setSelectedEmployees((prev) => prev.filter((emp) => emp !== employee.name));
+                              }
+                          }}
+
                   />
                   {employee.name}
                 </label>
@@ -189,13 +258,14 @@ export default function ReportsPage() {
                   <input
                     type="checkbox"
                     value={order.numer}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setSelectedOrders((prev) => [...prev, order.numer]);
-                      } else {
-                        setSelectedOrders((prev) => prev.filter((ord) => ord !== order.numer));
-                      }
-                    }}
+                          onChange={(e) => {
+                              if (e.target.checked) {
+                                  setSelectedOrders((prev) => [...new Set([...prev, order.numer])]); // Zapobieganie duplikatom
+                              } else {
+                                  setSelectedOrders((prev) => prev.filter((ord) => ord !== order.numer));
+                              }
+                          }}
+
                   />
                   {order.numer}
                 </label>

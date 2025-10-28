@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from .models import Comments, Zlecenia
 import logging
 import numpy as np  # Upewnij się, że numpy jest zainstalowany
@@ -63,6 +64,7 @@ def update_status(request, zamowienie_id):
             return redirect('index')  # Przekierowanie na stronę główną
     return HttpResponse("Nieprawidłowe żądanie", status=400)
 
+@csrf_exempt
 def comments(request, zamowienie_id):
     zamowienie = get_object_or_404(Zlecenia, id=zamowienie_id)
     if request.method == 'POST':
@@ -85,6 +87,7 @@ def comments(request, zamowienie_id):
         return JsonResponse(list(comments_list), safe=False)
     return JsonResponse({"error": "Nieprawidłowa metoda HTTP!"}, status=405)
 
+@csrf_exempt
 def orders_api(request):
     data = list(Zlecenia.objects.values()[:50])  # tylko 50 pierwszych
     return JsonResponse(data, safe=False)

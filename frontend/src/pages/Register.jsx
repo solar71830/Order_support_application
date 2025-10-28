@@ -16,9 +16,15 @@ export default function Register() {
         formData.append("email", email);
         formData.append("position", position);
 
+        const token = localStorage.getItem("jwtToken"); // Pobierz token z localStorage
+
         try {
             const res = await fetch("http://127.0.0.1:8000/register/", {
                 method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`, // Dodaj token do nagłówka
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
                 body: formData,
             });
             const text = await res.text();

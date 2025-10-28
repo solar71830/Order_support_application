@@ -81,8 +81,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'produkcja_zlecenia',
         'USER': 'root',
-        #'PASSWORD': '' #jeśli nie ma się hasła, to odkomentować to zakomwentoweać linijkę niżej
-        'PASSWORD': 'domiolik2', # jeśli to jest moje hasło - Oliwia - zostawić tak jak jest inaczej wykomentować 
+        'PASSWORD': '', #jeśli nie ma się hasła, to odkomentować to zakomwentoweać linijkę niżej
+        #'PASSWORD': 'domiolik2', # jeśli to jest moje hasło - Oliwia - zostawić tak jak jest inaczej wykomentować 
         #ale prosze nie usuwajcie, bo mi się nie chce za każdym razem sprawdzać jakie mam hasło do bazy
         'HOST': 'localhost',
         'PORT': '3306',
@@ -132,3 +132,11 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOW_ALL_ORIGINS = True  # tylko do testów!
+
+#bez tego nie działa dodawanie nowych rzeczy
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",  # Adres Twojego frontendu
+]
+
+CSRF_COOKIE_SECURE = False  # Włączone tylko w HTTPS
+CORS_ALLOW_CREDENTIALS = True
