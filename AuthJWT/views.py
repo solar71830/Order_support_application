@@ -92,7 +92,7 @@ def jwt_required(func): # wrapper dla zabezpieczenia urli
 @jwt_required
 def register(request):
     # SUPERUSER - do sprawdzenia czy uzytkoiwnik moze korzystac z opcji tworzenia konta
-    jwt_payload = getattr(request, 'jwt_payload', None)
+    jwt_payload = getattr(request, 'username', None)
     username_req = jwt_payload.get("name")
     user = User.objects.get(username=username_req)
     if user.role != "admin":
@@ -139,21 +139,27 @@ def account_info(request):
 @jwt_required
 def account_edit(request):
     if request.method=='POST':
-        
+        #dane dot. roli
+        token_data = getattr(request,'jwt_payload',None)
+        is_admin = token_data.get("role")
+        #nowe dane do wyedytowania
         username_data = request.POST.get("username")
         email_new = request.POST.get("email")
         password_new = request.POST.get("password")
         position_new= request.POST.get("password")
+        role_new = request.POST.get("role")
         print(username_data,email_new,password_new,position_new)
         data = {}
         if User.objects.filter(username=username_data).exists():
-            id_obj = User.objects.get(username=username_data)
+            #id_obj = User.objects.get(username=username_data)
             if email_new:
                 data["email"] = email_new
             if password_new:
                 data["password"] = password_new
             if position_new:
                 data["position"] = position_new
+            if role_new and is_admin == "admin": # tylko admin może tworzyć nowych adminów
+                data["role"] = role_new
             if data:
                 User.objects.filter(username=username_data).update(**data)
                 return HttpResponse("Zaktualizowano dane użytkownika",status=200)
