@@ -61,7 +61,6 @@ def login(request):
 
         return HttpResponse("Nieprawidłowe żądanie", status=200)
     
-# dodać blacklist dla zużytych tokenów który cyklicznie się czyści
 
 def jwt_required(func): # wrapper dla zabezpieczenia urli
     def wrapper(request, *args,**kwargs):

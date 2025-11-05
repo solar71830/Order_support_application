@@ -9,7 +9,7 @@ class User (models.Model):
     email = models.EmailField(max_length=150,unique=True)
     password = models.CharField(max_length=150)
     position = models.CharField(max_length=150,null = True,blank=True)
-    role = models.CharField(max_length=20, default='user')
+    role = models.CharField(max_length=30, default='user')
     
     class Meta:
         db_table = 'authjwt_user'
@@ -21,7 +21,7 @@ class Blacklisted_jwt(models.Model):
     id =  models.BigAutoField(primary_key=True)
     #jwt_token= models.TextField(max_length=512, unique=True,null=False)
     jwt_token = models.CharField(max_length=512, unique=True, null=False) # zostawić na MySQL bo inaczej nie działa, proszę 
-    iat = models.BigIntegerField(default=current_unix_t())
+    iat = models.BigIntegerField(default=1762369756)
     class Meta:
         db_table = 'authjwt_blacklisted'
 

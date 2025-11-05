@@ -1,3 +1,4 @@
-.sql
+*.sql
 /.vs
 /env
+*.pyc
