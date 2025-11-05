@@ -81,7 +81,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'produkcja_zlecenia',
         'USER': 'root',
-        'PASSWORD': '', #jeśli nie ma się hasła, to odkomentować to zakomwentoweać linijkę niżej
+        'PASSWORD': 'A113bojaknietoco', #jeśli nie ma się hasła, to odkomentować to zakomwentoweać linijkę niżej
         #'PASSWORD': 'domiolik2', # jeśli to jest moje hasło - Oliwia - zostawić tak jak jest inaczej wykomentować 
         #ale prosze nie usuwajcie, bo mi się nie chce za każdym razem sprawdzać jakie mam hasło do bazy
         'HOST': 'localhost',

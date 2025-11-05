@@ -10,6 +10,7 @@ class User (models.Model):
     password = models.CharField(max_length=150)
     position = models.CharField(max_length=150,null = True,blank=True)
     role = models.CharField(max_length=20, default='user')
+    
     class Meta:
         db_table = 'authjwt_user'
 

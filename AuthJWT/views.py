@@ -23,23 +23,29 @@ def login(request):
         username_req = request.POST.get('username')
         password_req = request.POST.get('password')
         try:
-            timestamp_new = int(time.time())
             user_req = User.objects.get(username = username_req)
-            private_key ="django-insecure-14g0@on!f@q-cr%&rvnd%v1vy*-jpt5dy-wx8(qlm5urg)nrm_"
             if (str(user_req.password) == str(password_req)):
+                timestamp_new = int(time.time())
+                private_key ="django-insecure-14g0@on!f@q-cr%&rvnd%v1vy*-jpt5dy-wx8(qlm5urg)nrm_"
                 temp_id = str(user_req.id)
                 temp_username = str(user_req.username)
+                print(user_req)
                 headers_jwt = {
                     "alg":"HS256",
                     "typ":"JWT"
-
-
                 }
+                
+                if(user_req.role == "admin"):
+                    is_admin = True
+                else:
+                    is_admin = False
+
                 jwt_payload = {
                     "sub": temp_id,
                     "name": temp_username,
                     "iat":timestamp_new,
-                    "exp": timestamp_new + 3600
+                    "exp": timestamp_new + 3600,
+                    "admin": is_admin
 
                 }
                 jwt_token = jwt.encode(payload=jwt_payload,key=private_key,algorithm="HS256",headers=headers_jwt )
