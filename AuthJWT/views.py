@@ -16,6 +16,11 @@ from django.http import HttpResponse
 from inz.models import Zlecenia, Comments
 from datetime import datetime
 
+def check_if_admin(request):
+    jwt_payload= getattr(request,"jwt_payload",None)
+    is_admin = jwt_payload.get("admin")
+    return is_admin
+
 
 @csrf_exempt
 def login(request):
@@ -92,9 +97,7 @@ def jwt_required(func): # wrapper dla zabezpieczenia urli
 @jwt_required
 def register(request):
     # SUPERUSER - do sprawdzenia czy uzytkoiwnik moze korzystac z opcji tworzenia konta
-    jwt_payload = getattr(request,"jwt_payload",None)
-    role_req = jwt_payload.get("admin")
-    if role_req!= True:
+    if check_if_admin(request) != True:
         return HttpResponse("Brak uprawnień", status=403)
     username_req =  request.POST.get("username")
     user_exists = User.objects.filter(username=username_req).exists()
@@ -123,21 +126,22 @@ def register(request):
 @jwt_required
 def account_info(request):
     if request.method =='GET':
-         jwt_payload = getattr(request, 'jwt_payload', None)
-         role_req = jwt_payload.get("admin")
-         if role_req!= True:
+        username_req = request.GET.get("username")
+        if check_if_admin(request)!= True:
             return HttpResponse("Brak uprawnień", status=403)
-         username_req = request.POST.get("username")
-         user = User.objects.get(username=username_req)
-         return JsonResponse({
-            "info": {
-                "id": str(user.id),
-                "username": user.username,
-                "email": user.email,
-                "position": user.position,
-                "role": user.role
-            }
-        }, status=200)
+        try:
+            user = User.objects.get(username=username_req)
+            return JsonResponse({
+                "info": {
+                    "id": str(user.id),
+                    "username": user.username,
+                    "email": user.email,
+                    "position": user.position,
+                    "role": user.role
+                }
+            }, status=200)
+        except:
+             return HttpResponse("Błąd, nie znaleziono użytkownika",status=404)
     else:
          return HttpResponse("Nieprawidłowe żądanie", status=400)
     
@@ -145,9 +149,7 @@ def account_info(request):
 @jwt_required
 def account_edit(request):
     if request.method=='POST':
-        jwt_payload = getattr(request,"jwt_payload",None)
-        role_req = jwt_payload.get("admin")
-        if role_req!= True:
+        if check_if_admin(request)!= True:
             return HttpResponse("Brak uprawnień", status=403)
 
         #dane dot. roli
@@ -185,6 +187,8 @@ def account_edit(request):
 @jwt_required
 def account_delete(request):
         if request.method=='POST':
+            if check_if_admin(request) !=True:
+                return HttpResponse("Brak uprawnień", status=403)
             username_data = request.POST.get("username")
             if User.objects.filter(username=username_data).exists():
                 User.objects.filter(username= username_data).delete()
@@ -224,9 +228,7 @@ def is_email_valid(email: str) -> bool:
 @jwt_required
 def users_list(request):
     if request.method == 'GET':
-        jwt_payload = getattr(request,"jwt_payload",None)
-        role_req = jwt_payload.get("admin")
-        if role_req!= True:
+        if check_if_admin(request)!= True:
             return HttpResponse("Brak uprawnień", status=403)
         users = User.objects.all().values("username")
         return JsonResponse({"users": list(users)}, status=200)
