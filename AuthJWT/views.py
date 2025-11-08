@@ -124,7 +124,10 @@ def register(request):
 def account_info(request):
     if request.method =='GET':
          jwt_payload = getattr(request, 'jwt_payload', None)
-         username_req = jwt_payload.get("name")
+         role_req = jwt_payload.get("admin")
+         if role_req!= True:
+            return HttpResponse("Brak uprawnień", status=403)
+         username_req = request.POST.get("username")
          user = User.objects.get(username=username_req)
          return JsonResponse({
             "info": {
@@ -142,26 +145,30 @@ def account_info(request):
 @jwt_required
 def account_edit(request):
     if request.method=='POST':
+        jwt_payload = getattr(request,"jwt_payload",None)
+        role_req = jwt_payload.get("admin")
+        if role_req!= True:
+            return HttpResponse("Brak uprawnień", status=403)
+
         #dane dot. roli
         token_data = getattr(request,'jwt_payload',None)
-        is_admin = token_data.get("role")
+        is_admin = token_data.get("admin")
+
         #nowe dane do wyedytowania
         username_data = request.POST.get("username")
         email_new = request.POST.get("email")
         password_new = request.POST.get("password")
         position_new= request.POST.get("password")
         role_new = request.POST.get("role")
-        print(username_data,email_new,password_new,position_new)
         data = {}
         if User.objects.filter(username=username_data).exists():
-            #id_obj = User.objects.get(username=username_data)
             if email_new:
                 data["email"] = email_new
             if password_new:
                 data["password"] = password_new
             if position_new:
                 data["position"] = position_new
-            if role_new and is_admin == "admin": # tylko admin może tworzyć nowych adminów lub zmieniać role
+            if role_new and is_admin: # tylko admin może tworzyć nowych adminów lub zmieniać role
                 data["role"] = role_new
             if data:
                 User.objects.filter(username=username_data).update(**data)
@@ -184,8 +191,6 @@ def account_delete(request):
                 return HttpResponse("Pomyślnie usunięto użytkownika", status=200)
             else:
                 return HttpResponse("Nie znaleziono użytkownika", status=404)
-
-            
         else:
             return HttpResponse("Błąd",status=400)
 
@@ -198,7 +203,7 @@ def logout(request):
         auth_header = request.headers.get("Authorization")
         token = Blacklisted_jwt.objects.filter(jwt_token=auth_header).exists()
         if not token:
-            Blacklisted_jwt.objects.create(jwt_token=token)
+            Blacklisted_jwt.objects.create(jwt_token=auth_header)
             return HttpResponse("Pomyślnie wylogowano", status=200)
         else:
             return HttpResponse("Błąd: Token znajduje się w bazie przedawnionych tokenów",status=400)
@@ -219,17 +224,17 @@ def is_email_valid(email: str) -> bool:
 @jwt_required
 def users_list(request):
     if request.method == 'GET':
-        jwt_payload = getattr(request, 'jwt_payload', None)
-        username_req = jwt_payload.get("name")
-        user = User.objects.get(username=username_req)
-        if user.role != "admin":
+        jwt_payload = getattr(request,"jwt_payload",None)
+        role_req = jwt_payload.get("admin")
+        if role_req!= True:
             return HttpResponse("Brak uprawnień", status=403)
         users = User.objects.all().values("username")
         return JsonResponse({"users": list(users)}, status=200)
     else:
         return HttpResponse("Nieprawidłowe żądanie", status=400)
 
-def login_view(request):
+@csrf_exempt
+def login_view(request): #???
     if request.method == "POST":
         username = request.POST.get("username")
         password = request.POST.get("password")
@@ -239,6 +244,9 @@ def login_view(request):
         else:
             return JsonResponse({"error": "Invalid credentials"}, status=401)
     return JsonResponse({"error": "Invalid request method"}, status=405)
+
+
+
 
 #raporty
 @csrf_exempt
