@@ -92,11 +92,13 @@ def jwt_required(func): # wrapper dla zabezpieczenia urli
 @jwt_required
 def register(request):
     # SUPERUSER - do sprawdzenia czy uzytkoiwnik moze korzystac z opcji tworzenia konta
-    jwt_payload = getattr(request, 'username', None)
-    username_req = jwt_payload.get("name")
-    user = User.objects.get(username=username_req)
-    if user.role != "admin":
+    role_req = request.POST.get("role")
+    if role_req!= "admin":
         return HttpResponse("Brak uprawnień", status=403)
+    username_req =  request.POST.get("username")
+    user_exists = User.objects.filter(username=username_req).exists()
+    if(user_exists):
+        return HttpResponse("Użytkownik o podanej nazwie już istnieje, wprowadź inną nazwę użytkownika",status=400)
     if request.method =='POST':
         try:
             username_new = request.POST.get('username')
@@ -158,7 +160,7 @@ def account_edit(request):
                 data["password"] = password_new
             if position_new:
                 data["position"] = position_new
-            if role_new and is_admin == "admin": # tylko admin może tworzyć nowych adminów
+            if role_new and is_admin == "admin": # tylko admin może tworzyć nowych adminów lub zmieniać role
                 data["role"] = role_new
             if data:
                 User.objects.filter(username=username_data).update(**data)
