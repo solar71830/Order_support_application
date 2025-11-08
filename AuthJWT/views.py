@@ -92,8 +92,9 @@ def jwt_required(func): # wrapper dla zabezpieczenia urli
 @jwt_required
 def register(request):
     # SUPERUSER - do sprawdzenia czy uzytkoiwnik moze korzystac z opcji tworzenia konta
-    role_req = request.POST.get("role")
-    if role_req!= "admin":
+    jwt_payload = getattr(request,"jwt_payload",None)
+    role_req = jwt_payload.get("admin")
+    if role_req!= True:
         return HttpResponse("Brak uprawnień", status=403)
     username_req =  request.POST.get("username")
     user_exists = User.objects.filter(username=username_req).exists()
