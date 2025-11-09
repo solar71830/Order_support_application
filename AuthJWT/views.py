@@ -56,15 +56,15 @@ def login(request):
                 jwt_token = jwt.encode(payload=jwt_payload,key=private_key,algorithm="HS256",headers=headers_jwt )
                 
             else:
-                return HttpResponse("Nieprawidłowe hasło",status=400)
+                return HttpResponse("Nieprawidłowe hasło",status=401)
         except User.DoesNotExist:
-            return HttpResponse("Nie znaleziono użytkownika",status=400)
+            return HttpResponse("Nie znaleziono użytkownika",status=404)
         
         
         return JsonResponse({"token":jwt_token},status=200)
     else:
 
-        return HttpResponse("Nieprawidłowe żądanie", status=200)
+        return HttpResponse("Nieprawidłowe żądanie", status=405)
     
 
 def jwt_required(func): # wrapper dla zabezpieczenia urli
@@ -120,7 +120,7 @@ def register(request):
         else:
             return HttpResponse("Wprowadzono nieprawidłowe dane", status=400)
     else:
-        return HttpResponse("Nieprawidłowe żądanie", status=400)
+        return HttpResponse("Nieprawidłowe żądanie", status=405)
 
 @csrf_exempt
 @jwt_required
@@ -143,7 +143,7 @@ def account_info(request):
         except:
              return HttpResponse("Błąd, nie znaleziono użytkownika",status=404)
     else:
-         return HttpResponse("Nieprawidłowe żądanie", status=400)
+         return HttpResponse("Nieprawidłowe żądanie", status=405)
     
 @csrf_exempt
 @jwt_required
@@ -178,10 +178,10 @@ def account_edit(request):
             else:
                 return HttpResponse("Brak danych do zaktualizowania", status=400)
         else:
-            return HttpResponse("Nie znaleziono użytkownika", status=401)
+            return HttpResponse("Nie znaleziono użytkownika", status=404)
             
     else:
-        return HttpResponse("Błąd", status=400)
+        return HttpResponse("Błąd", status=405)
 
 @csrf_exempt
 @jwt_required
@@ -196,7 +196,7 @@ def account_delete(request):
             else:
                 return HttpResponse("Nie znaleziono użytkownika", status=404)
         else:
-            return HttpResponse("Błąd",status=400)
+            return HttpResponse("Nieprawidłowe żądanie",status=405)
 
     
 
@@ -211,6 +211,8 @@ def logout(request):
             return HttpResponse("Pomyślnie wylogowano", status=200)
         else:
             return HttpResponse("Błąd: Token znajduje się w bazie przedawnionych tokenów",status=400)
+    else:
+        HttpResponse("Nieprawidłowe żądanie", status=405)
 
 
 def is_email_valid(email: str) -> bool:
@@ -233,7 +235,7 @@ def users_list(request):
         users = User.objects.all().values("username")
         return JsonResponse({"users": list(users)}, status=200)
     else:
-        return HttpResponse("Nieprawidłowe żądanie", status=400)
+        return HttpResponse("Nieprawidłowe żądanie", status=405)
 
 @csrf_exempt
 def login_view(request): #???
