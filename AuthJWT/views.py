@@ -59,8 +59,6 @@ def login(request):
                 return HttpResponse("Nieprawidłowe hasło",status=401)
         except User.DoesNotExist:
             return HttpResponse("Nie znaleziono użytkownika",status=404)
-        
-        
         return JsonResponse({"token":jwt_token},status=200)
     else:
 
@@ -109,13 +107,18 @@ def register(request):
             password_new = request.POST.get('password')
             email_new = request.POST.get('email')
             position_new =request.POST.get('position')
+            if(request.POST.filter('role').exists()):
+                role_new = request.POST.get('role')
+            else:
+                role_new = 'user'
+
         except:
             return HttpResponse("Nieprawidłowe dane rejestracji", status=400)
         if username_new  and password_new  and is_email_valid(email_new):
             if position_new:
-                User.objects.create(username=username_new, password=password_new,email=email_new,position=position_new)
+                User.objects.create(username=username_new, password=password_new,email=email_new,position=position_new,role=role_new)
             else:
-                User.objects.create(username=username_new, password=password_new,email=email_new,position='user')
+                User.objects.create(username=username_new, password=password_new,email=email_new,position='user',role=role_new)
             return HttpResponse("Utworzono nowego użytkownika",status=200)
         else:
             return HttpResponse("Wprowadzono nieprawidłowe dane", status=400)
