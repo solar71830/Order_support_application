@@ -2,10 +2,7 @@
 
 from django.db import migrations, models
 
-def create_default_admin(apps,schema_editor):
-    User = apps.get_model('AuthJWT', 'User')
-    if not User.objects.filter(username="admin").exists():
-        User.objects.create(username="admin",password="admin123",email="admin@example.com",position="admin", role="admin" )
+
 
 class Migration(migrations.Migration):
 
@@ -24,5 +21,5 @@ class Migration(migrations.Migration):
             name='role',
             field=models.CharField(default='user', max_length=30),
         ),
-        migrations.RunPython(create_default_admin),
+        
     ]

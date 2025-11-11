@@ -107,10 +107,10 @@ def register(request):
             password_new = request.POST.get('password')
             email_new = request.POST.get('email')
             position_new =request.POST.get('position')
-            if(request.POST.filter('role').exists()):
-                role_new = request.POST.get('role')
-            else:
+            role_new = request.POST.get('role')
+            if not role_new:
                 role_new = 'user'
+            print(username_new, password_new, email_new, position_new, role_new)
 
         except:
             return HttpResponse("Nieprawidłowe dane rejestracji", status=400)
@@ -163,7 +163,7 @@ def account_edit(request):
         username_data = request.POST.get("username")
         email_new = request.POST.get("email")
         password_new = request.POST.get("password")
-        position_new= request.POST.get("password")
+        position_new= request.POST.get("position")
         role_new = request.POST.get("role")
         data = {}
         if User.objects.filter(username=username_data).exists():
