@@ -15,18 +15,23 @@ function App() {
     const [token, setToken] = useState(null);
     const [authMode, setAuthMode] = useState("login");
     const [userInfo, setUserInfo] = useState(null);
+    const [username_new, setUsername] = useState(null);
 
-    // Funkcja obs³uguj¹ca logowanie jeœli narusza prawa bezpiezceñstwa usun¹æ @Bartek
-    const handleLogin = (token) => {
+    // Funkcja obsï¿½ugujï¿½ca logowanie jeï¿½li narusza prawa bezpiezceï¿½stwa usunï¿½ï¿½ @Bartek
+    const handleLogin = (token,username_new) => {
         const now = new Date().getTime(); // Aktualny czas w milisekundach
         localStorage.setItem("jwtToken", token); // Zapisz token
+        localStorage.setItem("usernameLog",username_new)
         localStorage.setItem("tokenTimestamp", now); // Zapisz czas zapisania tokena
+        setUsername(username_new); // ustaw username dla zapytania get
         setToken(token); // Ustaw token w stanie aplikacji
+        
     };
 
     useEffect(() => {
         localStorage.removeItem("jwtToken");
         localStorage.removeItem("tokenTimestamp");
+        localStorage.removeItem("usernameLog")
         setToken(null); // Wyzeruj token w stanie aplikacji
     }, []);
 
@@ -40,12 +45,13 @@ function App() {
             const thirtyMinutes = 30 * 60 * 1000; // 30 minut w milisekundach
 
             if (elapsedTime > thirtyMinutes) {
-                localStorage.removeItem("jwtToken"); // Usuñ token
-                localStorage.removeItem("tokenTimestamp"); // Usuñ czas zapisania tokena
+                localStorage.removeItem("jwtToken"); // Usuï¿½ token
+                localStorage.removeItem("tokenTimestamp"); // Usuï¿½ czas zapisania tokena
+                localStorage.removeItem("usernameLog")
                 setToken(null); // Wyzeruj token w stanie aplikacji
-                alert("Sesja wygas³a. Zaloguj siê ponownie."); // Powiadom u¿ytkownika
+                alert("Sesja wygasï¿½a. Zaloguj siï¿½ ponownie."); // Powiadom uï¿½ytkownika
             } else {
-                setToken(savedToken); // Token jest nadal wa¿ny
+                setToken(savedToken); // Token jest nadal waï¿½ny
             }
         }
     }, []);
@@ -58,9 +64,9 @@ function App() {
         }
     }, []);
 
-    useEffect(() => {
+    useEffect(() => { // accountinfo po logowaniu
         if (token) {
-            fetch("http://127.0.0.1:8000/account-info/", {
+            fetch(`http://127.0.0.1:8000/account-info/?username=${username_new}`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
                 .then(res => res.json())

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-export default function AccountInfo({ token }) {
+export default function AccountInfo({ token, username_new }) {
     const [info, setInfo] = useState(null);
     const [error, setError] = useState("");
 

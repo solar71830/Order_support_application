@@ -17,15 +17,17 @@ export default function Login({ onLogin }) {
                 method: "POST",
                 body: formData,
             });
+            console.log(res, "to jest odpowiedź");
             if (res.ok) {
                 const data = await res.json();
-                onLogin(data.token); // Przekazujemy token do komponentu nadrzędnego
+                onLogin(data.token,username); // Przekazujemy token do komponentu nadrzędnego
             } else {
                 const text = await res.text();
                 setError(text);
             }
         } catch (err) {
             setError("Błąd połączenia z serwerem");
+            
         }
     };
 
