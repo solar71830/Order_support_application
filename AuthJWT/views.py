@@ -235,7 +235,13 @@ def users_list(request):
     if request.method == 'GET':
         if check_if_admin(request)!= True:
             return HttpResponse("Brak uprawnień", status=403)
-        users = User.objects.all().values("username")
+        try:
+            users = User.objects.all().values("username")
+            print(users, list(users))
+        except Exception:
+            return HttpResponse("Błąd", status=400)
+    
+
         return JsonResponse({"users": list(users)}, status=200)
     else:
         return HttpResponse("Nieprawidłowe żądanie", status=405)

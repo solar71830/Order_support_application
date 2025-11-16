@@ -88,6 +88,7 @@ function App() {
         }
     }, [token, userInfo]);
 
+    console.log(username_new, "nazwa do przekazania")
     let page = null;
     if (!token) {
         page =
@@ -100,10 +101,10 @@ function App() {
             if (active === "work") page = <WorkPage />;
             if (active === "news") page = <NewsPage />;
             if (active === "reports") page = <ReportsPage />;
-            if (active === "account") page = <AccountInfo token={token} />;
+            if (active === "account") page = <AccountInfo token={token} username_new={username_new}/>;
             if (active === "manageusers") page = <ManageUsers token={token} />;
         } else {
-            if (active === "account") page = <AccountInfo token={token} />;
+            if (active === "account") page = <AccountInfo token={token} username_new={username_new}/>;
             if (active === "orders") page = <OrdersPage orders={orders} />;
             if (active === "work") page = <WorkPage />;
             if (active === "news") page = <NewsPage />;
