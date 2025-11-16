@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-export default function Register() {
+export default function Register(token) {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [email, setEmail] = useState("");
@@ -17,9 +17,13 @@ export default function Register() {
         formData.append("position", position);
 
         try {
+
             const res = await fetch("http://127.0.0.1:8000/register/", {
                 method: "POST",
                 body: formData,
+                headers: {
+                Authorization: `Bearer ${token.token}`, // coś jest nie tak że token przechowuje inne rzeczy niż tylko token, tylko nie wiem co
+            },
             });
             const text = await res.text();
             setMessage(text);

@@ -5,7 +5,7 @@ export default function AccountInfo({ token, username_new }) {
     const [error, setError] = useState("");
 
     useEffect(() => {
-        fetch("http://127.0.0.1:8000/account-info/", {
+        fetch(`http://127.0.0.1:8000/account-info/?username=${username_new}`, {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${token}`,
