@@ -1,67 +1,87 @@
 import React, { useState, useEffect } from "react";
 
-export default function NewsPage() {
-  const [news, setNews] = useState([]); // Lista aktualności
-  const [newNews, setNewNews] = useState({ title: "", content: "", image: null }); // Formularz dodania nowej aktualności
-  const [editingNews, setEditingNews] = useState(null); // Aktualność do edycji
-  const [showAddForm, setShowAddForm] = useState(false); // Kontrola widoczności formularza dodania aktualności
+export default function NewsPage({ userInfo }) {
+  const [news, setNews] = useState([]);
+  const [newNews, setNewNews] = useState({ title: "", content: "" });
+  const [editingNews, setEditingNews] = useState(null);
+  const [showAddForm, setShowAddForm] = useState(false);
 
-  // Funkcja do odczytu aktualności z localStorage
   useEffect(() => {
     const storedNews = JSON.parse(localStorage.getItem("news")) || [];
     setNews(storedNews);
   }, []);
 
-  // Funkcja do zapisu aktualności w localStorage
   const saveNewsToLocalStorage = (updatedNews) => {
     localStorage.setItem("news", JSON.stringify(updatedNews));
   };
 
+  // Sprawdź czy user może edytować aktualność
+  const canEditNews = (newsItem) => {
+    if (!userInfo) return false;
+    // Admin może edytować wszystko (nawet anonimowe)
+    if (userInfo.role === "admin") return true;
+    // Autor może edytować swoją aktualność (tylko jeśli nie jest anonimowy)
+    if (newsItem.author !== "Anonimowy" && newsItem.author === userInfo.username) return true;
+    return false;
+  };
+
   const handleAddNews = () => {
-    const newId = news.length ? Math.max(news.map((n) => n.id)) + 1 : 1;
-    const updatedNews = [{ ...newNews, id: newId }, ...news]; // Dodaj nową aktualność na górę listy
+    const newId = news.length ? Math.max(...news.map((n) => n.id)) + 1 : 1;
+    const updatedNews = [
+      {
+        ...newNews,
+        id: newId,
+        author: userInfo?.username || "Anonimowy",
+        createdAt: new Date().toISOString(),
+      },
+      ...news,
+    ];
     setNews(updatedNews);
-    saveNewsToLocalStorage(updatedNews); // Zapisz w localStorage
-    setNewNews({ title: "", content: "", image: null });
-    setShowAddForm(false); // Ukryj formularz po dodaniu aktualności
+    saveNewsToLocalStorage(updatedNews);
+    setNewNews({ title: "", content: "" });
+    setShowAddForm(false);
   };
 
   const handleEditNews = (id) => {
     const updatedNews = news.map((n) => (n.id === id ? editingNews : n));
     setNews(updatedNews);
-    saveNewsToLocalStorage(updatedNews); // Zapisz w localStorage
+    saveNewsToLocalStorage(updatedNews);
     setEditingNews(null);
   };
 
   const handleDeleteNews = (id) => {
-    const updatedNews = news.filter((n) => n.id !== id); // Usuń aktualność o podanym ID
+    const updatedNews = news.filter((n) => n.id !== id);
     setNews(updatedNews);
-    saveNewsToLocalStorage(updatedNews); // Zapisz w localStorage
-    setEditingNews(null); // Zamknij tryb edycji po usunięciu
+    saveNewsToLocalStorage(updatedNews);
+    setEditingNews(null);
   };
 
   return (
     <div className="white-box">
-      <h2 style={{ color: "#111", marginBottom: "20px", textAlign: "center" }}>Aktualności</h2>
+      <h2 style={{ color: "#111", marginBottom: "20px", textAlign: "center" }}>
+        Aktualności
+      </h2>
 
       {/* Przycisk do wyświetlenia formularza dodania nowej aktualności */}
-      <button
-        onClick={() => setShowAddForm(!showAddForm)}
-        style={{
-          backgroundColor: "#38b6ff",
-          color: "#fff",
-          border: "none",
-          padding: "10px 20px",
-          borderRadius: "8px",
-          cursor: "pointer",
-          marginBottom: "20px",
-        }}
-      >
-        {showAddForm ? "Ukryj formularz" : "Dodaj nową aktualność"}
-      </button>
+      {userInfo && (
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          style={{
+            backgroundColor: "#38b6ff",
+            color: "#fff",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            marginBottom: "20px",
+          }}
+        >
+          {showAddForm ? "Ukryj formularz" : "Dodaj nową aktualność"}
+        </button>
+      )}
 
       {/* Formularz dodania nowej aktualności */}
-      {showAddForm && (
+      {showAddForm && userInfo && (
         <div
           style={{
             marginBottom: "20px",
@@ -83,8 +103,9 @@ export default function NewsPage() {
               padding: "10px",
               border: "1px solid #ccc",
               borderRadius: "8px",
-              backgroundColor: "#fff", // Białe tło
-              color: "#111", // Czarny tekst
+              backgroundColor: "#fff",
+              color: "#111",
+              boxSizing: "border-box",
             }}
           />
           <textarea
@@ -97,18 +118,12 @@ export default function NewsPage() {
               padding: "10px",
               border: "1px solid #ccc",
               borderRadius: "8px",
-              backgroundColor: "#fff", // Białe tło
-              color: "#111", // Czarny tekst
+              backgroundColor: "#fff",
+              color: "#111",
               resize: "none",
+              boxSizing: "border-box",
             }}
           ></textarea>
-          <input
-            type="file"
-            onChange={(e) => setNewNews({ ...newNews, image: URL.createObjectURL(e.target.files[0]) })}
-            style={{
-              marginBottom: "10px",
-            }}
-          />
           <button
             onClick={handleAddNews}
             style={{
@@ -140,42 +155,66 @@ export default function NewsPage() {
               justifyContent: "space-between",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", textAlign: "left" }}>
-              {item.image && (
-                <img
-                  src={item.image}
-                  alt="Aktualność"
-                  style={{
-                    width: "80px",
-                    height: "80px",
-                    borderRadius: "8px",
-                    marginRight: "20px",
-                  }}
-                />
-              )}
-              <div>
-                <h3 style={{ margin: 0, color: "#111", textAlign: "left" }}>{item.title}</h3>
-                <p style={{ margin: 0, color: "#111", textAlign: "left" }}>{item.content}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => setEditingNews(item)}
+            <div
               style={{
-                backgroundColor: "transparent",
-                border: "none",
-                color: "#007bff",
-                cursor: "pointer",
-                textDecoration: "underline",
+                display: "flex",
+                alignItems: "center",
+                textAlign: "left",
+                flex: 1,
               }}
             >
-              Edytuj
-            </button>
+              <div style={{ width: "100%" }}>
+                <h3
+                  style={{
+                    margin: "0 0 5px 0",
+                    color: "#111",
+                    textAlign: "left",
+                  }}
+                >
+                  {item.title}
+                </h3>
+                <p
+                  style={{
+                    margin: "0 0 5px 0",
+                    color: "#111",
+                    textAlign: "left",
+                  }}
+                >
+                  {item.content}
+                </p>
+                <small
+                  style={{
+                    color: "rgba(255, 255, 255, 0.7)",
+                  }}
+                >
+                  Autor: {item.author || "Anonimowy"}{" "}
+                  {item.createdAt &&
+                    ` • ${new Date(item.createdAt).toLocaleDateString("pl-PL")}`}
+                </small>
+              </div>
+            </div>
+            {canEditNews(item) && (
+              <button
+                onClick={() => setEditingNews(item)}
+                style={{
+                  backgroundColor: "transparent",
+                  border: "none",
+                  color: "#fff",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  marginLeft: "10px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Edytuj
+              </button>
+            )}
           </div>
         ))}
       </div>
 
       {/* Formularz edycji aktualności */}
-      {editingNews && (
+      {editingNews && canEditNews(editingNews) && (
         <div
           style={{
             marginTop: "20px",
@@ -197,8 +236,9 @@ export default function NewsPage() {
               padding: "10px",
               border: "1px solid #ccc",
               borderRadius: "8px",
-              backgroundColor: "#fff", // Białe tło
-              color: "#111", // Czarny tekst
+              backgroundColor: "#fff",
+              color: "#111",
+              boxSizing: "border-box",
             }}
           />
           <textarea
@@ -211,19 +251,13 @@ export default function NewsPage() {
               padding: "10px",
               border: "1px solid #ccc",
               borderRadius: "8px",
-              backgroundColor: "#fff", // Białe tło
-              color: "#111", // Czarny tekst
+              backgroundColor: "#fff",
+              color: "#111",
               resize: "none",
+              boxSizing: "border-box",
             }}
           ></textarea>
-          <input
-            type="file"
-            onChange={(e) => setEditingNews({ ...editingNews, image: URL.createObjectURL(e.target.files[0]) })}
-            style={{
-              marginBottom: "10px",
-            }}
-          />
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "10px" }}>
             <button
               onClick={() => handleEditNews(editingNews.id)}
               style={{
@@ -233,7 +267,7 @@ export default function NewsPage() {
                 padding: "10px 20px",
                 borderRadius: "8px",
                 cursor: "pointer",
-                width: "48%",
+                flex: 1,
               }}
             >
               Zapisz zmiany
@@ -247,10 +281,24 @@ export default function NewsPage() {
                 padding: "10px 20px",
                 borderRadius: "8px",
                 cursor: "pointer",
-                width: "48%",
+                flex: 1,
               }}
             >
               Usuń
+            </button>
+            <button
+              onClick={() => setEditingNews(null)}
+              style={{
+                backgroundColor: "#6c757d",
+                color: "#fff",
+                border: "none",
+                padding: "10px 20px",
+                borderRadius: "8px",
+                cursor: "pointer",
+                flex: 1,
+              }}
+            >
+              Anuluj
             </button>
           </div>
         </div>

@@ -88,6 +88,14 @@ function App() {
         }
     }, [token, userInfo]);
 
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("userInfo");
+        setToken(null);
+        setUserInfo(null);
+        setActive("orders"); // lub inna strona
+    };
+
     let page = null;
     if (!token) {
         page =
@@ -116,6 +124,7 @@ function App() {
             active={active}
             setActive={setActive}
             userInfo={userInfo}
+            onLogout={handleLogout}
         >
             {page}
         </Template>

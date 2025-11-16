@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import OrderDetailPage from "./OrderDetailPage";
 import "../App.css";
 
 export default function OrdersPage() {
@@ -6,20 +7,71 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [comment, setComment] = useState("");
+  const [comment, setComment] = useState(""); // treść komentarza w modal
+  const [commentDeadline, setCommentDeadline] = useState(""); // deadline w formularzu komentarza
+  const [commentsList, setCommentsList] = useState([]); // pobrane komentarze dla wybranego zamówienia
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [searchTerm, setSearchTerm] = useState(""); // Wyszukiwanie
-  const [showAddOrderModal, setShowAddOrderModal] = useState(false); // Modal dodania zamówienia
-  const [newOrder, setNewOrder] = useState({ numer: "", osoba: "", cena: 0, status: "Oczekiwanie" }); // Formularz dodania zamówienia
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState(null); // nowe: do wyświetlenia szczegółów
 
   useEffect(() => {
+    loadOrders();
+  }, []);
+
+  const loadOrders = () => {
+    setLoading(true);
     fetch("http://127.0.0.1:8000/api/orders/")
       .then((res) => res.json())
       .then((data) => {
-        setOrders(data);
-        setLoading(false);
-      });
-  }, []);
+        const ordersList = Array.isArray(data) ? data : (data.results || []);
+        console.log("Pierwszy order:", ordersList[0]); // <- tutaj zobaczysz wszystkie pola
+        setOrders(ordersList);
+      })
+      .catch((err) => {
+        console.error("Błąd pobierania zamówień:", err);
+        setOrders([]);
+      })
+      .finally(() => setLoading(false));
+  };
+
+  // pomocnik: pobierz cookie
+  const getCookie = (name) => {
+    const match = document.cookie.match(new RegExp("(^|; )" + name + "=([^;]*)"));
+    return match ? decodeURIComponent(match[2]) : null;
+  };
+
+  // pobierz komentarze dla zamówienia
+  const fetchComments = (orderId) => {
+    setCommentsLoading(true);
+    fetch(`http://127.0.0.1:8000/comments/${orderId}/`)
+      .then(async (res) => {
+        if (!res.ok) {
+          // może backend zwraca HTML (np. przekierowanie) -> traktujemy jako brak
+          const txt = await res.text().catch(() => "");
+          console.warn("fetchComments non-ok:", res.status, txt);
+          return [];
+        }
+        return res.json().catch(() => []); // jeśli nie JSON -> pusta lista
+      })
+      .then((data) => {
+        // Obsługa różnych formatów odpowiedzi
+        if (!data) {
+          setCommentsList([]);
+        } else if (Array.isArray(data)) {
+          setCommentsList(data);
+        } else if (data.comments) {
+          setCommentsList(Array.isArray(data.comments) ? data.comments : []);
+        } else {
+          setCommentsList([]);
+        }
+      })
+      .catch((err) => {
+        console.error("Błąd fetchComments:", err);
+        setCommentsList([]);
+      })
+      .finally(() => setCommentsLoading(false));
+  };
 
   const handleSort = (key) => {
     let direction = "asc";
@@ -29,12 +81,10 @@ export default function OrdersPage() {
     setSortConfig({ key, direction });
 
     const sortedOrders = [...orders].sort((a, b) => {
-      if (a[key] < b[key]) {
-        return direction === "asc" ? -1 : 1;
-      }
-      if (a[key] > b[key]) {
-        return direction === "asc" ? 1 : -1;
-      }
+      const va = (a[key] ?? "").toString().toLowerCase();
+      const vb = (b[key] ?? "").toString().toLowerCase();
+      if (va < vb) return direction === "asc" ? -1 : 1;
+      if (va > vb) return direction === "asc" ? 1 : -1;
       return 0;
     });
     setOrders(sortedOrders);
@@ -47,75 +97,140 @@ export default function OrdersPage() {
     return "▲▼";
   };
 
-  const handleAddComment = () => {
-    if (!selectedOrder) return;
-
-    const formData = new FormData();
-    formData.append("comment", comment); // Treść komentarza
-    formData.append("deadline", new Date().toISOString().split("T")[0]); // Automatyczna dzisiejsza data
-
-    fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
-      method: "POST",
-      body: formData,
-    })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Błąd podczas dodawania komentarza");
-        }
-        return res.json();
-      })
-      .then(() => {
-        alert("Komentarz został dodany!");
-        setShowModal(false);
-        setComment("");
-        // Opcjonalnie: odśwież dane zamówień
-        fetch("http://127.0.0.1:8000/api/orders/")
-          .then((res) => res.json())
-          .then((data) => setOrders(data));
-      })
-      .catch((err) => {
-        console.error(err);
-        alert("Wystąpił błąd podczas dodawania komentarza.");
-      });
+  // helper: normalizuj liczbę dni (time_diff może być string, null, itp.)
+  const parseDays = (val) => {
+    const n = Number(val);
+    if (Number.isFinite(n)) return n;
+    return 9999; // traktuj jako daleko w przyszłości
   };
 
-  const handleAddOrder = () => {
-    const formData = new FormData();
-    formData.append("numer", newOrder.numer);
-    formData.append("osoba", newOrder.osoba);
-    formData.append("cena", newOrder.cena);
-    formData.append("status", newOrder.status);
+  // logika kolorów i textual label dla termometru
+  const thermometerColor = (order) => {
+    // Jeśli status to Zrealizowane -> zawsze zielony
+    if (order?.status === "Zrealizowane") {
+      return "#28a745";
+    }
+    
+    // Dla pozostałych statusów (Brak, Oczekiwanie, W trakcie) -> sprawdzaj dni
+    if (order?.is_overdue) return "#dc3545";
+    const days = parseDays(order?.time_diff);
+    if (days <= 3) return "#dc3545";
+    if (days <= 7) return "#ffc107";
+    return "#28a745";
+  };
 
-    fetch("http://127.0.0.1:8000/api/orders/", {
-      method: "POST",
-      body: formData,
-    })
-      .then((res) => {
+  // aktualizuj status zamówienia (zgodnie z template index.html backend expects POST to update_status url)
+  const updateOrderStatus = async (orderId, newStatus) => {
+    const token = localStorage.getItem("token");
+    try {
+      if (token) {
+        // jeśli używamy JWT -> wysyłamy JSON z Authorization
+        const res = await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        });
         if (!res.ok) {
-          throw new Error("Błąd podczas dodawania zamówienia");
+          const text = await res.text();
+          throw new Error(text || res.status);
         }
-        return res.json();
-      })
-      .then(() => {
-        alert("Zamówienie zostało dodane!");
-        setShowAddOrderModal(false);
-        setNewOrder({ numer: "", osoba: "", cena: 0, status: "Oczekiwanie" });
-        // Odśwież dane zamówień
-        fetch("http://127.0.0.1:8000/api/orders/")
-          .then((res) => res.json())
-          .then((data) => setOrders(data));
-      })
-      .catch((err) => {
-        console.error(err);
-        alert("Wystąpił błąd podczas dodawania zamówienia.");
-      });
+      } else {
+        // sesja + CSRF -> FormData + credentials
+        const csrftoken = getCookie("csrftoken");
+        const form = new FormData();
+        form.append("status", newStatus);
+        const res = await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
+          method: "POST",
+          credentials: "include",
+          headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
+          body: form,
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || res.status);
+        }
+      }
+      // odśwież listę zamówień
+      loadOrders();
+    } catch (err) {
+      console.error("Błąd update status:", err);
+      alert("Błąd aktualizacji statusu: " + (err.message || err));
+      // odśwież dane lokalnie jeżeli potrzebne
+      loadOrders();
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!selectedOrder) return;
+
+    try {
+      const payload = {
+        text: comment,
+        deadline: commentDeadline || null,
+      };
+
+      const token = localStorage.getItem("token");
+      // jeśli mamy token - wysyłamy JSON z Authorization; inaczej korzystamy z sesji (CSRF)
+      if (token) {
+        const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || res.status);
+        }
+      } else {
+        const csrftoken = getCookie("csrftoken");
+        const form = new FormData();
+        form.append("text", comment);
+        if (commentDeadline) form.append("deadline", commentDeadline);
+        const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
+          method: "POST",
+          credentials: "include",
+          headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
+          body: form,
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || res.status);
+        }
+      }
+
+      // sukces
+      setComment("");
+      setCommentDeadline("");
+      fetchComments(selectedOrder.id);
+      loadOrders();
+      alert("Komentarz został dodany!");
+    } catch (err) {
+      console.error("Błąd podczas dodawania komentarza:", err);
+      alert("Wystąpił błąd podczas dodawania komentarza: " + (err.message || err));
+    }
   };
 
   const filteredOrders = orders.filter(
     (order) =>
-      (order.numer || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.osoba || "").toLowerCase().includes(searchTerm.toLowerCase())
+      (order.numer || "").toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.osoba || "").toString().toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // jeśli wybrany szczegół zamówienia -> wyświetl stronę szczegółów
+  if (selectedOrderDetail) {
+    return (
+      <OrderDetailPage
+        orderId={selectedOrderDetail.id}
+        onBack={() => setSelectedOrderDetail(null)}
+      />
+    );
+  }
 
   if (loading) return <div>Ładowanie...</div>;
   if (!orders.length) return <div>Brak zamówień.</div>;
@@ -141,8 +256,6 @@ export default function OrdersPage() {
         style={{
           width: "90%",
           marginBottom: "20px",
-          display: "flex",
-          justifyContent: "space-between",
         }}
       >
         <input
@@ -151,7 +264,7 @@ export default function OrdersPage() {
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
-            width: "45%",
+            width: "100%",
             padding: "10px",
             border: "1px solid #ccc",
             borderRadius: "8px",
@@ -159,21 +272,6 @@ export default function OrdersPage() {
             color: "#111",
           }}
         />
-
-        {/* Dodanie zamówienia */}
-        <button
-          onClick={() => setShowAddOrderModal(true)}
-          style={{
-            backgroundColor: "#38b6ff",
-            color: "#fff",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            cursor: "pointer",
-          }}
-        >
-          Dodaj Zamówienie
-        </button>
       </div>
 
       {/* Tabela zamówień */}
@@ -203,124 +301,128 @@ export default function OrdersPage() {
               <th onClick={() => handleSort("cena")} style={{ cursor: "pointer" }}>
                 Wartość Zamówienia {getSortIndicator("cena")}
               </th>
-              <th onClick={() => handleSort("timeline_progress_scaled")} style={{ cursor: "pointer" }}>
-                Termometr {getSortIndicator("timeline_progress_scaled")}
-              </th>
+              <th>Termometr</th>
               <th>Komentarze</th>
               <th>Deadline</th>
-              <th onClick={() => handleSort("status")} style={{ cursor: "pointer" }}>
-                Status {getSortIndicator("status")}
-              </th>
+              <th>Status</th>
               <th>Dodaj Komentarz</th>
             </tr>
           </thead>
           <tbody>
-            {filteredOrders.slice(0, 50).map((order) => (
-              <tr key={order.id}>
-                <td>{order.numer || order.id}</td>
-                <td>{order.osoba || "Brak"}</td>
-                <td>{order.cena}</td>
-                <td>
-                  <div
-                    className="progress"
-                    style={{
-                      height: 25,
-                      background: "#e9ecef",
-                      position: "relative",
-                      minWidth: "160px",
-                      whiteSpace: "nowrap",
-                      display: "flex",
-                      alignItems: "center",
-                    }}
-                  >
+            {filteredOrders.map((order) => {
+              // Sprawdź które pole deadline istnieje w odpowiedzi backendu
+              const deadlineValue = 
+                order?.next_deadline && order.next_deadline !== "" && order.next_deadline !== null && order.next_deadline !== "Brak"
+                  ? order.next_deadline
+                  : (order?.deadline || order?.data_deadline || "Brak");
+              
+              const barColor = thermometerColor(order);
+              return (
+                <tr 
+                  key={order.id}
+                  onClick={() => setSelectedOrderDetail(order)}
+                  style={{ cursor: "pointer", transition: "background-color 0.2s" }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ""}
+                >
+                  <td>{order.numer || order.id}</td>
+                  <td>{order.osoba || "Brak"}</td>
+                  <td>{order.cena}</td>
+                  <td>
                     <div
-                      className={
-                        "progress-bar" +
-                        (order.is_overdue
-                          ? " progress-bar-danger"
-                          : order.time_diff <= 7 && order.time_diff >= 0
-                          ? " progress-bar-warning"
-                          : " progress-bar-info")
-                      }
-                      role="progressbar"
+                      className="progress"
                       style={{
-                        width: `${order.timeline_progress_scaled}%`,
-                        transition: "width 1s ease",
-                        background:
-                          order.is_overdue
-                            ? "red"
-                            : order.time_diff <= 7 && order.time_diff >= 0
-                            ? "yellow"
-                            : "#17a2b8",
-                        minWidth: "0",
-                        height: "100%",
-                        borderRadius: "4px",
-                      }}
-                    ></div>
-                    <span
-                      className="data-label"
-                      style={{
-                        position: "absolute",
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        color: "black",
-                        fontWeight: "bold",
+                        height: 25,
+                        background: "#e9ecef",
+                        position: "relative",
+                        minWidth: "160px",
                         whiteSpace: "nowrap",
+                        display: "flex",
+                        alignItems: "center",
                       }}
                     >
-                      {order.data_potwierdzona}
-                    </span>
-                  </div>
-                </td>
-                <td>{order.comments_count}</td>
-                <td
-                  style={
-                    order.next_deadline && order.next_deadline !== "Brak"
-                      ? { background: "red", color: "white", textAlign: "center" }
-                      : { color: "#111", textAlign: "center" }
-                  }
-                >
-                  {order.next_deadline && order.next_deadline !== "Brak"
-                    ? order.next_deadline
-                    : "Brak"}
-                </td>
-                <td>
-                  <select
-                    value={order.status || "Brak"}
-                    className="form-select"
-                    onChange={(e) => {
-                      alert(
-                        `Zmieniono status zamówienia ${order.numer} na ${e.target.value}`
-                      );
-                    }}
+                      <div
+                        className="progress-bar"
+                        role="progressbar"
+                        style={{
+                          width: `${order.timeline_progress_scaled ?? order.timeline_progress ?? 0}%`,
+                          transition: "width 1s ease",
+                          background: barColor,
+                          minWidth: "0",
+                          height: "100%",
+                          borderRadius: "4px",
+                        }}
+                      />
+                      <span
+                        className="data-label"
+                        style={{
+                          position: "absolute",
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          color: "#fff",
+                          fontWeight: "bold",
+                          whiteSpace: "nowrap",
+                          textShadow: "1px 1px 2px rgba(0, 0, 0, 0.5)",
+                        }}
+                      >
+                        {order.data_potwierdzona ?? "Brak"}
+                      </span>
+                    </div>
+                  </td>
+                  <td>{order.comments_count ?? 0}</td>
+                  <td
+                    style={
+                      deadlineValue !== "Brak"
+                        ? { background: "red", color: "white", textAlign: "center" }
+                        : { color: "#111", textAlign: "center" }
+                    }
                   >
-                    <option value="Brak" hidden>
-                      Brak
-                    </option>
-                    <option value="Oczekiwanie">Oczekiwanie</option>
-                    <option value="W trakcie">W trakcie</option>
-                    <option value="Zrealizowane">Zrealizowane</option>
-                  </select>
-                </td>
-                <td>
-                  <button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => {
-                      setSelectedOrder(order);
-                      setShowModal(true);
-                    }}
-                  >
-                    Dodaj Komentarz
-                  </button>
-                </td>
-              </tr>
-            ))}
+                    {deadlineValue}
+                  </td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <select
+                      value={order.status || "Brak"}
+                      className="form-select"
+                      onChange={(e) => {
+                        const newStatus = e.target.value;
+                        // potwierdzenie jak w template
+                        if (window.confirm("Czy na pewno chcesz zastosować zmiany?")) {
+                          updateOrderStatus(order.id, newStatus);
+                        } else {
+                          // przywróć poprzednią wartość (przefetch)
+                          loadOrders();
+                        }
+                      }}
+                    >
+                      <option value="Brak" hidden>
+                        Brak
+                      </option>
+                      <option value="Oczekiwanie">Oczekiwanie</option>
+                      <option value="W trakcie">W trakcie</option>
+                      <option value="Zrealizowane">Zrealizowane</option>
+                    </select>
+                  </td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        fetchComments(order.id);
+                        setShowModal(true);
+                      }}
+                    >
+                      Dodaj Komentarz
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      {/* Modal dodania zamówienia */}
-      {showAddOrderModal && (
+      {/* Modal komentarzy (wg comments.html) */}
+      {showModal && selectedOrder && (
         <div
           style={{
             position: "fixed",
@@ -334,180 +436,79 @@ export default function OrdersPage() {
             alignItems: "center",
             zIndex: 1000,
           }}
+          onClick={() => setShowModal(false)}
         >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: "white",
               padding: "20px",
               borderRadius: "8px",
-              width: "500px",
+              width: "600px",
+              maxHeight: "80vh",
+              overflowY: "auto",
               boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
             }}
           >
-            <h3 style={{ marginBottom: "20px", textAlign: "center", color: "#111" }}>
-              Dodaj nowe zamówienie
+            <h3 style={{ marginBottom: "10px", textAlign: "center", color: "#111" }}>
+              Komentarze dla zamówienia: <strong>{selectedOrder.numer}</strong>
             </h3>
-            <input
-              type="text"
-              placeholder="Numer zamówienia"
-              value={newOrder.numer}
-              onChange={(e) => setNewOrder({ ...newOrder, numer: e.target.value })}
-              style={{
-                width: "90%",
-                marginBottom: "10px",
-                padding: "10px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                backgroundColor: "#fff",
-                color: "#111",
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Osoba"
-              value={newOrder.osoba}
-              onChange={(e) => setNewOrder({ ...newOrder, osoba: e.target.value })}
-              style={{
-                width: "90%",
-                marginBottom: "10px",
-                padding: "10px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                backgroundColor: "#fff",
-                color: "#111",
-              }}
-            />
-            <input
-              type="number"
-              placeholder="Cena"
-              value={newOrder.cena}
-              onChange={(e) => setNewOrder({ ...newOrder, cena: e.target.value })}
-              style={{
-                width: "90%",
-                marginBottom: "10px",
-                padding: "10px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                backgroundColor: "#fff",
-                color: "#111",
-              }}
-            />
-            <select
-              value={newOrder.status}
-              onChange={(e) => setNewOrder({ ...newOrder, status: e.target.value })}
-              style={{
-                width: "90%",
-                marginBottom: "20px",
-                padding: "10px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                backgroundColor: "#fff",
-                color: "#111",
-              }}
-            >
-              <option value="Oczekiwanie">Oczekiwanie</option>
-              <option value="W trakcie">W trakcie</option>
-              <option value="Zrealizowane">Zrealizowane</option>
-            </select>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <button
-                className="btn btn-primary"
-                onClick={handleAddOrder}
-                style={{ width: "48%" }}
-              >
-                Dodaj
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowAddOrderModal(false)}
-                style={{ width: "48%" }}
-              >
-                Zamknij
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Modal */}
-      {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "500px",
-              boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
-            }}
-          >
-            <h3 style={{ marginBottom: "20px", textAlign: "center", color: "#111" }}>
-              Komentarz do zamówienia: <strong>{selectedOrder.numer}</strong>
-            </h3>
-            <textarea
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              placeholder="Dodaj komentarz"
-              style={{
-                width: "90%",
-                height: "100px",
-                marginBottom: "20px",
-                padding: "10px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                backgroundColor: "#fff",
-                color: "#111",
-                resize: "none",
-              }}
-            ></textarea>
-            <input
-              type="text"
-              value={new Date().toLocaleDateString("pl-PL", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })}
-              readOnly
-              style={{
-                width: "90%",
-                marginBottom: "20px",
-                padding: "10px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                backgroundColor: "#f8f9fa",
-                color: "#111",
-                fontWeight: "bold",
-                cursor: "not-allowed",
-              }}
-            />
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <button
-                className="btn btn-primary"
-                onClick={handleAddComment}
-                style={{ width: "48%" }}
-              >
-                Dodaj
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowModal(false)}
-                style={{ width: "48%" }}
-              >
-                Zamknij
-              </button>
+            {/* lista komentarzy */}
+            <div style={{ marginBottom: 12 }}>
+              {commentsLoading ? (
+                <div>Ładowanie komentarzy...</div>
+              ) : commentsList.length ? (
+                <ul style={{ paddingLeft: 16 }}>
+                  {commentsList.map((c) => (
+                    <li key={c.id ?? `${c.date}-${c.text}` } style={{ marginBottom: 8 }}>
+                      <div style={{ fontSize: "1rem" }}>{c.text ?? c.comment ?? ""}</div>
+                      <small style={{ color: "#666" }}>
+                        {c.date ?? c.created_at ?? ""}
+                        { (c.deadline ?? c.deadline_date) ? (
+                          <span style={{ color: "red", fontWeight: "bold", marginLeft: 8 }}>
+                            (Deadline: {c.deadline ?? c.deadline_date})
+                          </span>
+                        ) : null}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div>Brak komentarzy.</div>
+              )}
+            </div>
+
+            {/* formularz dodania komentarza (wg comments.html) */}
+            <div style={{ marginTop: 8 }}>
+              <div className="form-group" style={{ marginBottom: 8 }}>
+                <label style={{ display: "block", marginBottom: 6 }}>Dodaj komentarz</label>
+                <textarea
+                  className="form-control"
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={4}
+                  style={{ width: "100%", padding: 8, borderRadius: 4 }}
+                />
+              </div>
+              <div className="form-group" style={{ marginBottom: 12 }}>
+                <label style={{ display: "block", marginBottom: 6 }}>Deadline (opcjonalnie)</label>
+                <input
+                  type="date"
+                  className="form-control"
+                  value={commentDeadline}
+                  onChange={(e) => setCommentDeadline(e.target.value)}
+                  style={{ padding: 8, borderRadius: 4, width: "100%" }}
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <button onClick={handleAddComment} className="btn btn-primary" style={{ width: "48%" }}>
+                  Dodaj
+                </button>
+                <button onClick={() => setShowModal(false)} className="btn btn-secondary" style={{ width: "48%" }}>
+                  Zamknij
+                </button>
+              </div>
             </div>
           </div>
         </div>

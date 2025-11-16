@@ -9,4 +9,5 @@ urlpatterns = [
     path('comments/<int:zamowienie_id>/', views.comments, name='comments'),
     path('api/orders/', views.orders_api, name='orders_api'),  # <-- DODAJ TO
     path("api/comments/", comments, name="comments"),
+    path('api/order/<int:zamowienie_id>/', views.order_detail, name='order_detail'),
 ]

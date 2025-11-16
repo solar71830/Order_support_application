@@ -89,3 +89,20 @@ def comments(request, zamowienie_id):
 def orders_api(request):
     data = list(Zlecenia.objects.values()[:50])  # tylko 50 pierwszych
     return JsonResponse(data, safe=False)
+
+def order_detail(request, zamowienie_id):
+    """Zwraca szczegóły zamówienia w formacie JSON"""
+    zamowienie = get_object_or_404(Zlecenia, id=zamowienie_id)
+    data = {
+        'id': zamowienie.id,
+        'numer': zamowienie.numer,
+        'towar': zamowienie.towar,
+        'ilosc': zamowienie.ilosc,
+        'cena': zamowienie.cena,
+        'osoba': zamowienie.osoba,
+        'firma': zamowienie.firma,
+        'status': zamowienie.status,
+        'data_zamowienia': zamowienie.data_zamowienia.isoformat() if zamowienie.data_zamowienia else None,
+        'data_potwierdzona': zamowienie.data_potwierdzona.isoformat() if zamowienie.data_potwierdzona else None,
+    }
+    return JsonResponse(data)

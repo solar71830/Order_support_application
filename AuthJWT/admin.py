@@ -4,10 +4,12 @@ from .models import User
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
     list_display = ("username", "email", "role")
+    list_filter = ("role",)
+    search_fields = ("username", "email")
 
 # Register your models here.
 
-user = User.objects.get(username="admin")
+user = User.objects.get(username="admin1")
 user.set_password("admin123")  # Zaszyfrowanie hasła
 user.role = "admin"
 user.save()
