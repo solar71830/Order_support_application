@@ -19,14 +19,94 @@ export default function OrdersPage() {
     loadOrders();
   }, []);
 
+  // helper: normalizuj pojedyncze zamówienie (status, deadline, progress, time_diff)
+  const normalizeOrder = (o) => {
+    // status - robust detection
+    const rawStatus = o?.status ?? o?.stan ?? "";
+    const s = (rawStatus ?? "").toString().toLowerCase();
+    let statusNormalized = "Brak";
+    if (s.includes("zrealiz")) statusNormalized = "Zrealizowane";
+    else if (s.includes("oczek")) statusNormalized = "Oczekiwanie";
+    else if (s.includes("trak")) statusNormalized = "W trakcie";
+    else if (s && !["", "brak", "none", "null"].includes(s)) statusNormalized = rawStatus;
+
+    // deadline - several possible field names
+    let deadline = o?.next_deadline ?? o?.deadline ?? o?.data_deadline ?? o?.deadline_date ?? null;
+    if (deadline === null || deadline === "" || deadline === "null") deadline = "Brak";
+
+    // timeline progress - numeric fallback
+    let progress = Number(o?.timeline_progress_scaled ?? o?.timeline_progress ?? o?.progress ?? 0);
+    if (!Number.isFinite(progress)) progress = 0;
+
+    // time diff / days left
+    let timeDiff = Number(o?.time_diff ?? o?.days_left ?? o?.days ?? NaN);
+    if (!Number.isFinite(timeDiff)) timeDiff = 9999;
+
+    // overdue flag
+    const isOverdue = Boolean(o?.is_overdue) || timeDiff < 0;
+
+    // comments count — obsłuż różne nazwy / struktury
+    let commentsCount =
+      o?.comments_count ??
+      o?.comments_count_num ??
+      (Array.isArray(o?.comments) ? o.comments.length : undefined) ??
+      (Array.isArray(o?.comments_list) ? o.comments_list.length : undefined) ??
+      o?.comments_length ??
+      0;
+    if (Array.isArray(commentsCount)) commentsCount = commentsCount.length;
+    if (typeof commentsCount === "object" && commentsCount !== null && "length" in commentsCount) {
+      commentsCount = Number(commentsCount.length) || 0;
+    }
+    commentsCount = Number(commentsCount) || 0;
+
+    return {
+      ...o,
+      statusNormalized,
+      deadlineValue: deadline,
+      timeline_progress_num: progress,
+      time_diff_num: timeDiff,
+      is_overdue_bool: isOverdue,
+      comments_count: commentsCount,       // używane w UI
+      comments_count_num: commentsCount,   // wewnętrzny, numerowy
+    };
+  };
+
   const loadOrders = () => {
     setLoading(true);
     fetch("http://127.0.0.1:8000/api/orders/")
       .then((res) => res.json())
       .then((data) => {
         const ordersList = Array.isArray(data) ? data : (data.results || []);
-        console.log("Pierwszy order:", ordersList[0]); // <- tutaj zobaczysz wszystkie pola
-        setOrders(ordersList);
+        console.log("Pierwszy order:", ordersList[0]); // <- debug
+        // normalize all orders so UI uses consistent field names
+        const normalized = ordersList.map(normalizeOrder);
+        setOrders(normalized);
+
+        // pobierz rzeczywiste liczby komentarzy asynchronicznie i zaktualizuj stan
+        Promise.allSettled(
+          normalized.map((o) =>
+            fetch(`http://127.0.0.1:8000/comments/${o.id}/`)
+              .then((r) => r.ok ? r.json().catch(() => []) : [])
+              .then((resp) => {
+                if (Array.isArray(resp)) return { id: o.id, count: resp.length };
+                if (resp && Array.isArray(resp.comments)) return { id: o.id, count: resp.comments.length };
+                return { id: o.id, count: 0 };
+              })
+              .catch(() => ({ id: o.id, count: 0 }))
+          )
+        ).then((results) => {
+          const counts = results
+            .filter((r) => r.status === "fulfilled")
+            .map((r) => r.value);
+          if (counts.length) {
+            setOrders((prev) =>
+              prev.map((o) => {
+                const found = counts.find((c) => c.id === o.id);
+                return found ? { ...o, comments_count: found.count, comments_count_num: found.count } : o;
+              })
+            );
+          }
+        });
       })
       .catch((err) => {
         console.error("Błąd pobierania zamówień:", err);
@@ -41,34 +121,43 @@ export default function OrdersPage() {
     return match ? decodeURIComponent(match[2]) : null;
   };
 
-  // pobierz komentarze dla zamówienia
+  // pobierz komentarze dla zamówienia — ZWRACA Promise z listą i aktualizuje licznik w tabeli
   const fetchComments = (orderId) => {
     setCommentsLoading(true);
-    fetch(`http://127.0.0.1:8000/comments/${orderId}/`)
+    return fetch(`http://127.0.0.1:8000/comments/${orderId}/`)
       .then(async (res) => {
         if (!res.ok) {
-          // może backend zwraca HTML (np. przekierowanie) -> traktujemy jako brak
           const txt = await res.text().catch(() => "");
           console.warn("fetchComments non-ok:", res.status, txt);
           return [];
         }
-        return res.json().catch(() => []); // jeśli nie JSON -> pusta lista
+        return res.json().catch(() => []);
       })
       .then((data) => {
-        // Obsługa różnych formatów odpowiedzi
-        if (!data) {
-          setCommentsList([]);
-        } else if (Array.isArray(data)) {
-          setCommentsList(data);
-        } else if (data.comments) {
-          setCommentsList(Array.isArray(data.comments) ? data.comments : []);
-        } else {
-          setCommentsList([]);
-        }
+        let list = [];
+        if (!data) list = [];
+        else if (Array.isArray(data)) list = data;
+        else if (data.comments) list = Array.isArray(data.comments) ? data.comments : [];
+        else list = [];
+
+        setCommentsList(list);
+
+        // zaktualizuj licznik komentarzy w liście zamówień
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? { ...o, comments_count: list.length, comments_count_num: list.length }
+              : o
+          )
+        );
+
+        // zwróć listę do wywołującego
+        return list;
       })
       .catch((err) => {
         console.error("Błąd fetchComments:", err);
         setCommentsList([]);
+        return [];
       })
       .finally(() => setCommentsLoading(false));
   };
@@ -104,16 +193,16 @@ export default function OrdersPage() {
     return 9999; // traktuj jako daleko w przyszłości
   };
 
-  // logika kolorów i textual label dla termometru
+  // logika kolorów i textual label dla termometru - używa znormalizowanych pól
   const thermometerColor = (order) => {
+    if (!order) return "#28a745";
     // Jeśli status to Zrealizowane -> zawsze zielony
-    if (order?.status === "Zrealizowane") {
-      return "#28a745";
-    }
-    
-    // Dla pozostałych statusów (Brak, Oczekiwanie, W trakcie) -> sprawdzaj dni
-    if (order?.is_overdue) return "#dc3545";
-    const days = parseDays(order?.time_diff);
+    if (order.statusNormalized === "Zrealizowane") return "#28a745";
+
+    // jeśli oznaczony jako overdue w backendzie lub wykryty lokalnie
+    if (order.is_overdue_bool) return "#dc3545";
+
+    const days = parseDays(order.time_diff_num);
     if (days <= 3) return "#dc3545";
     if (days <= 7) return "#ffc107";
     return "#28a745";
@@ -166,14 +255,21 @@ export default function OrdersPage() {
   const handleAddComment = async () => {
     if (!selectedOrder) return;
 
+    const textValue = (comment || "").trim();
+    if (!textValue) {
+      alert("Komentarz nie może być pusty");
+      return;
+    }
+
     try {
-      const payload = {
-        text: comment,
+      const token = localStorage.getItem("token");
+      const jsonPayload = {
+        text: textValue,
+        comment: textValue,
+        tresc: textValue,
         deadline: commentDeadline || null,
       };
 
-      const token = localStorage.getItem("token");
-      // jeśli mamy token - wysyłamy JSON z Authorization; inaczej korzystamy z sesji (CSRF)
       if (token) {
         const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
           method: "POST",
@@ -181,17 +277,22 @@ export default function OrdersPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(jsonPayload),
         });
         if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt || res.status);
+          const text = await res.text();
+          let parsed;
+          try { parsed = JSON.parse(text); } catch { parsed = text; }
+          throw new Error((parsed && parsed.error) ? parsed.error : text || res.status);
         }
       } else {
         const csrftoken = getCookie("csrftoken");
         const form = new FormData();
-        form.append("text", comment);
+        form.append("text", textValue);
+        form.append("comment", textValue);
+        form.append("tresc", textValue);
         if (commentDeadline) form.append("deadline", commentDeadline);
+
         const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
           method: "POST",
           credentials: "include",
@@ -199,16 +300,18 @@ export default function OrdersPage() {
           body: form,
         });
         if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(txt || res.status);
+          const text = await res.text();
+          let parsed;
+          try { parsed = JSON.parse(text); } catch { parsed = text; }
+          throw new Error((parsed && parsed.error) ? parsed.error : text || res.status);
         }
       }
 
-      // sukces
+      // po udanym dodaniu pobierz ponownie komentarze i zaktualizuj licznik
+      await fetchComments(selectedOrder.id);
+
       setComment("");
       setCommentDeadline("");
-      fetchComments(selectedOrder.id);
-      loadOrders();
       alert("Komentarz został dodany!");
     } catch (err) {
       console.error("Błąd podczas dodawania komentarza:", err);
@@ -310,20 +413,13 @@ export default function OrdersPage() {
           </thead>
           <tbody>
             {filteredOrders.map((order) => {
-              // Sprawdź które pole deadline istnieje w odpowiedzi backendu
-              const deadlineValue = 
-                order?.next_deadline && order.next_deadline !== "" && order.next_deadline !== null && order.next_deadline !== "Brak"
-                  ? order.next_deadline
-                  : (order?.deadline || order?.data_deadline || "Brak");
-              
-              const barColor = thermometerColor(order);
               return (
                 <tr 
                   key={order.id}
                   onClick={() => setSelectedOrderDetail(order)}
                   style={{ cursor: "pointer", transition: "background-color 0.2s" }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ""}
+                  onMouseEnter={(ev) => ev.currentTarget.style.backgroundColor = "#f0f0f0"}
+                  onMouseLeave={(ev) => ev.currentTarget.style.backgroundColor = ""}
                 >
                   <td>{order.numer || order.id}</td>
                   <td>{order.osoba || "Brak"}</td>
@@ -341,16 +437,30 @@ export default function OrdersPage() {
                         alignItems: "center",
                       }}
                     >
+                     {/* mały wskaźnik koloru zawsze widoczny po lewej */}
+                     <div
+                       style={{
+                         position: "absolute",
+                         left: 0,
+                         top: 0,
+                         bottom: 0,
+                         width: 8,
+                         backgroundColor: thermometerColor(order),
+                         borderRadius: "4px 0 0 4px",
+                         zIndex: 2,
+                       }}
+                     />
                       <div
                         className="progress-bar"
                         role="progressbar"
                         style={{
-                          width: `${order.timeline_progress_scaled ?? order.timeline_progress ?? 0}%`,
+                          width: `${Math.max(order.timeline_progress_num ?? 0, 6)}%`, // min widoczność
                           transition: "width 1s ease",
-                          background: barColor,
+                          backgroundColor: thermometerColor(order),
                           minWidth: "0",
                           height: "100%",
                           borderRadius: "4px",
+                         zIndex: 1,
                         }}
                       />
                       <span
@@ -365,31 +475,28 @@ export default function OrdersPage() {
                           textShadow: "1px 1px 2px rgba(0, 0, 0, 0.5)",
                         }}
                       >
-                        {order.data_potwierdzona ?? "Brak"}
+                        {order.data_potwierdzona ?? order.data_potwierdzona ?? "Brak"}
                       </span>
                     </div>
                   </td>
                   <td>{order.comments_count ?? 0}</td>
-                  <td
-                    style={
-                      deadlineValue !== "Brak"
-                        ? { background: "red", color: "white", textAlign: "center" }
-                        : { color: "#111", textAlign: "center" }
-                    }
-                  >
-                    {deadlineValue}
+                  <td style={{ textAlign: "center" }}>
+                    <span style={{
+                      color: order.is_overdue_bool ? "red" : "#111",
+                      fontWeight: order.is_overdue_bool ? "700" : "400",
+                    }}>
+                      {order.deadlineValue}
+                    </span>
                   </td>
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td onClick={(ev) => ev.stopPropagation()}>
                     <select
-                      value={order.status || "Brak"}
+                      value={order.statusNormalized || "Brak"}
                       className="form-select"
                       onChange={(e) => {
                         const newStatus = e.target.value;
-                        // potwierdzenie jak w template
                         if (window.confirm("Czy na pewno chcesz zastosować zmiany?")) {
                           updateOrderStatus(order.id, newStatus);
                         } else {
-                          // przywróć poprzednią wartość (przefetch)
                           loadOrders();
                         }
                       }}
@@ -402,7 +509,7 @@ export default function OrdersPage() {
                       <option value="Zrealizowane">Zrealizowane</option>
                     </select>
                   </td>
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <td onClick={(ev) => ev.stopPropagation()}>
                     <button
                       className="btn btn-primary btn-sm"
                       onClick={() => {
@@ -462,8 +569,10 @@ export default function OrdersPage() {
                 <ul style={{ paddingLeft: 16 }}>
                   {commentsList.map((c) => (
                     <li key={c.id ?? `${c.date}-${c.text}` } style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: "1rem" }}>{c.text ?? c.comment ?? ""}</div>
-                      <small style={{ color: "#666" }}>
+                      <div style={{ fontSize: "1rem", color: "#111", whiteSpace: "pre-wrap" }}>
+                        {c.text ?? c.comment ?? ""}
+                      </div>
+                      <small style={{ color: "#444" }}>
                         {c.date ?? c.created_at ?? ""}
                         { (c.deadline ?? c.deadline_date) ? (
                           <span style={{ color: "red", fontWeight: "bold", marginLeft: 8 }}>

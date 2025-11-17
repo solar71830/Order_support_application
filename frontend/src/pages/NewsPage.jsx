@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-export default function NewsPage({ userInfo }) {
+export default function NewsPage() {
   const [news, setNews] = useState([]);
   const [newNews, setNewNews] = useState({ title: "", content: "" });
   const [editingNews, setEditingNews] = useState(null);
@@ -15,23 +15,21 @@ export default function NewsPage({ userInfo }) {
     localStorage.setItem("news", JSON.stringify(updatedNews));
   };
 
-  // Sprawdź czy user może edytować aktualność
-  const canEditNews = (newsItem) => {
-    if (!userInfo) return false;
-    // Admin może edytować wszystko (nawet anonimowe)
-    if (userInfo.role === "admin") return true;
-    // Autor może edytować swoją aktualność (tylko jeśli nie jest anonimowy)
-    if (newsItem.author !== "Anonimowy" && newsItem.author === userInfo.username) return true;
-    return false;
-  };
-
   const handleAddNews = () => {
     const newId = news.length ? Math.max(...news.map((n) => n.id)) + 1 : 1;
+    const currentUser = (() => {
+      try {
+        const u = JSON.parse(localStorage.getItem("userInfo"));
+        return u?.username || "Anonimowy";
+      } catch {
+        return "Anonimowy";
+      }
+    })();
     const updatedNews = [
       {
         ...newNews,
         id: newId,
-        author: userInfo?.username || "Anonimowy",
+        author: currentUser,
         createdAt: new Date().toISOString(),
       },
       ...news,
@@ -62,26 +60,24 @@ export default function NewsPage({ userInfo }) {
         Aktualności
       </h2>
 
-      {/* Przycisk do wyświetlenia formularza dodania nowej aktualności */}
-      {userInfo && (
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{
-            backgroundColor: "#38b6ff",
-            color: "#fff",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            marginBottom: "20px",
-          }}
-        >
-          {showAddForm ? "Ukryj formularz" : "Dodaj nową aktualność"}
-        </button>
-      )}
+      {/* Przycisk do wyświetlenia formularza dodania nowej aktualności (dostępny dla wszystkich) */}
+      <button
+        onClick={() => setShowAddForm(!showAddForm)}
+        style={{
+          backgroundColor: "#38b6ff",
+          color: "#fff",
+          border: "none",
+          padding: "10px 20px",
+          borderRadius: "8px",
+          cursor: "pointer",
+          marginBottom: "20px",
+        }}
+      >
+        {showAddForm ? "Ukryj formularz" : "Dodaj nową aktualność"}
+      </button>
 
       {/* Formularz dodania nowej aktualności */}
-      {showAddForm && userInfo && (
+      {showAddForm && (
         <div
           style={{
             marginBottom: "20px",
@@ -193,7 +189,9 @@ export default function NewsPage({ userInfo }) {
                 </small>
               </div>
             </div>
-            {canEditNews(item) && (
+
+            {/* Edytuj / Usuń dostępne dla wszystkich */}
+            <div style={{ display: "flex", gap: "8px", marginLeft: "10px" }}>
               <button
                 onClick={() => setEditingNews(item)}
                 style={{
@@ -202,19 +200,31 @@ export default function NewsPage({ userInfo }) {
                   color: "#fff",
                   cursor: "pointer",
                   textDecoration: "underline",
-                  marginLeft: "10px",
                   whiteSpace: "nowrap",
                 }}
               >
                 Edytuj
               </button>
-            )}
+              <button
+                onClick={() => handleDeleteNews(item.id)}
+                style={{
+                  backgroundColor: "transparent",
+                  border: "none",
+                  color: "#fff",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Usuń
+              </button>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Formularz edycji aktualności */}
-      {editingNews && canEditNews(editingNews) && (
+      {/* Formularz edycji aktualności (dostępny dla każdego kiedy editingNews ustawione) */}
+      {editingNews && (
         <div
           style={{
             marginTop: "20px",

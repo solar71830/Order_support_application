@@ -79,21 +79,28 @@ export default function OrderDetailPage({ orderId, onBack }) {
       if (!res.ok) {
         console.warn("Błąd pobierania komentarzy:", res.status);
         setComments([]);
-        return;
+        // zaktualizuj licznik w nagłówku na 0
+        setOrder(prev => prev ? { ...prev, comments_count: 0 } : prev);
+        return [];
       }
       const data = await res.json().catch(() => []);
       console.log("Komentarze:", data);
 
-      if (Array.isArray(data)) {
-        setComments(data);
-      } else if (data.comments && Array.isArray(data.comments)) {
-        setComments(data.comments);
-      } else {
-        setComments([]);
-      }
+      let list = [];
+      if (Array.isArray(data)) list = data;
+      else if (data.comments && Array.isArray(data.comments)) list = data.comments;
+      else list = [];
+
+      setComments(list);
+      // zaktualizuj licznik komentarzy w headerze zamówienia
+      setOrder(prev => (prev ? { ...prev, comments_count: list.length } : prev));
+
+      return list;
     } catch (err) {
       console.error("Błąd fetchComments:", err);
       setComments([]);
+      setOrder(prev => prev ? { ...prev, comments_count: 0 } : prev);
+      return [];
     } finally {
       setCommentsLoading(false);
     }
@@ -106,14 +113,18 @@ export default function OrderDetailPage({ orderId, onBack }) {
     }
 
     try {
-      const payload = {
-        text: newComment,
+      const token = localStorage.getItem("token");
+      const textValue = newComment.trim();
+
+      // przygotuj payload z kilkoma wariantami nazw pola (kompatybilność)
+      const jsonPayload = {
+        text: textValue,
+        comment: textValue,
+        tresc: textValue,
         deadline: commentDeadline || null,
       };
 
-      const token = localStorage.getItem("token");
       let res;
-
       if (token) {
         res = await fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
           method: "POST",
@@ -121,13 +132,16 @@ export default function OrderDetailPage({ orderId, onBack }) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(jsonPayload),
         });
       } else {
         const csrftoken = getCookie("csrftoken");
         const form = new FormData();
-        form.append("text", newComment);
+        form.append("text", textValue);
+        form.append("comment", textValue);
+        form.append("tresc", textValue);
         if (commentDeadline) form.append("deadline", commentDeadline);
+
         res = await fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
           method: "POST",
           credentials: "include",
@@ -137,13 +151,18 @@ export default function OrderDetailPage({ orderId, onBack }) {
       }
 
       if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || `Błąd: ${res.status}`);
+        const txt = await res.text().catch(() => "");
+        let parsed;
+        try { parsed = JSON.parse(txt); } catch { parsed = txt; }
+        throw new Error((parsed && parsed.error) ? parsed.error : txt || res.status);
       }
+
+      // po udanym dodaniu odśwież komentarze i licznik w nagłówku
+      const list = await fetchComments(orderId);
 
       setNewComment("");
       setCommentDeadline("");
-      await fetchComments(orderId);
+
       alert("Komentarz został dodany!");
     } catch (err) {
       console.error("Błąd przy dodawaniu komentarza:", err);
