@@ -79,7 +79,8 @@ WSGI_APPLICATION = 'DjangoProject_inz.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'produkcja_zlecenia',
+        #'NAME': 'produkcja_zlecenia',
+        'NAME': 'anonimowe',
         'USER': 'root',
         #'PASSWORD': 'A113bojaknietoco', #jeśli nie ma się hasła, to odkomentować to zakomwentoweać linijkę niżej
         'PASSWORD': 'domiolik2', # jeśli to jest moje hasło - Oliwia - zostawić tak jak jest inaczej wykomentować 
