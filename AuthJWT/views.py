@@ -130,19 +130,25 @@ def register(request):
 def account_info(request):
     if request.method =='GET':
         username_req = request.GET.get("username")
-        if check_if_admin(request)!= True:
-            return HttpResponse("Brak uprawnień", status=403)
+        jwt_payload= getattr(request,"jwt_payload",None)
+        is_admin = jwt_payload.get("admin")
+        jwt_username = jwt_payload.get("name")
         try:
             user = User.objects.get(username=username_req)
-            return JsonResponse({
-                "info": {
-                    "id": str(user.id),
-                    "username": user.username,
-                    "email": user.email,
-                    "position": user.position,
-                    "role": user.role
-                }
-            }, status=200)
+            print("przechodzi", jwt_username,user.username)
+            if(is_admin or str(jwt_username) == str(user.username)):
+                print("przeszlo")
+                return JsonResponse({
+                    "info": {
+                        "id": str(user.id),
+                        "username": user.username,
+                        "email": user.email,
+                        "position": user.position,
+                        "role": user.role
+                    }
+                }, status=200)
+            else:
+                return HttpResponse("Brak uprawnień", status=403)
         except:
              return HttpResponse("Błąd, nie znaleziono użytkownika",status=404)
     else:
