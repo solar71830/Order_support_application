@@ -1,7 +1,7 @@
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import JsonResponse, HttpResponse
 from .models import Comments, Zlecenia
-import datetime
+from datetime import datetime
 import logging
 import numpy as np  # Upewnij się, że numpy jest zainstalowany
 from django.views.decorators.csrf import csrf_exempt

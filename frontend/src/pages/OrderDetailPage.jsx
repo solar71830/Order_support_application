@@ -8,7 +8,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
   const [comments, setComments] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [newComment, setNewComment] = useState("");
-  const [commentDeadline, setCommentDeadline] = useState("");
+  //const [commentDeadline, setCommentDeadline] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
   };
 
   const handleAddComment = async () => {
-    if (!newComment.trim()) {
+    if (newComment.replace(/\s/g, "") === "") {
       alert("Komentarz nie może być pusty");
       return;
     }
@@ -121,7 +121,6 @@ export default function OrderDetailPage({ orderId, onBack }) {
         text: textValue,
         comment: textValue,
         tresc: textValue,
-        deadline: commentDeadline || null,
       };
 
       let res;
@@ -140,7 +139,6 @@ export default function OrderDetailPage({ orderId, onBack }) {
         form.append("text", textValue);
         form.append("comment", textValue);
         form.append("tresc", textValue);
-        if (commentDeadline) form.append("deadline", commentDeadline);
 
         res = await fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
           method: "POST",
@@ -161,7 +159,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
       const list = await fetchComments(orderId);
 
       setNewComment("");
-      setCommentDeadline("");
+      //setCommentDeadline("");
 
       alert("Komentarz został dodany!");
     } catch (err) {
@@ -266,11 +264,10 @@ export default function OrderDetailPage({ orderId, onBack }) {
             <strong>Status:</strong> {order.status || "Brak"}
           </div>
           <div>
-            <strong>Data potwierdzenia:</strong> {order.data_potwierdzona || "Brak"}
+            <strong>Data potwierdzenia:</strong> {order.data_oczekiwana || "Brak"}
           </div>
           <div>
-            <strong>Deadline:</strong>{" "}
-            {order.next_deadline && order.next_deadline !== "Brak" ? order.next_deadline : "Brak"}
+            <strong>Deadline:</strong> {order.data_potwierdzona || "Brak"}
           </div>
           <div>
             <strong>Liczba komentarzy:</strong> {order.comments_count || 0}
@@ -347,11 +344,6 @@ export default function OrderDetailPage({ orderId, onBack }) {
                 <div style={{ color: "#111", fontWeight: "bold" }}>{c.text ?? c.comment ?? ""}</div>
                 <small style={{ color: "#666" }}>
                   {c.date ?? c.created_at ?? ""}
-                  {c.deadline || c.deadline_date ? (
-                    <span style={{ color: "red", fontWeight: "bold", marginLeft: "8px" }}>
-                      (Deadline: {c.deadline ?? c.deadline_date})
-                    </span>
-                  ) : null}
                 </small>
               </div>
             ))}
@@ -395,7 +387,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
             }}
           />
         </div>
-        <div style={{ marginBottom: "10px" }}>
+        {/* <div style={{ marginBottom: "10px" }}>
           <label style={{ display: "block", marginBottom: "5px", color: "#111", fontWeight: "bold" }}>
             Deadline (opcjonalnie)
           </label>
@@ -411,7 +403,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
               color: "#111",
             }}
           />
-        </div>
+        </div> */}
         <button
           onClick={handleAddComment}
           style={{

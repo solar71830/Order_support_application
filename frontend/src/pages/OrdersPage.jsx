@@ -8,7 +8,7 @@ export default function OrdersPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [comment, setComment] = useState(""); // treść komentarza w modal
-  const [commentDeadline, setCommentDeadline] = useState(""); // deadline w formularzu komentarza
+  //const [commentDeadline, setCommentDeadline] = useState(""); // deadline w formularzu komentarza
   const [commentsList, setCommentsList] = useState([]); // pobrane komentarze dla wybranego zamówienia
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
@@ -25,13 +25,17 @@ export default function OrdersPage() {
     const rawStatus = o?.status ?? o?.stan ?? "";
     const s = (rawStatus ?? "").toString().toLowerCase();
     let statusNormalized = "Brak";
-    if (s.includes("zrealiz")) statusNormalized = "Zrealizowane";
-    else if (s.includes("oczek")) statusNormalized = "Oczekiwanie";
-    else if (s.includes("trak")) statusNormalized = "W trakcie";
+    // if (s.includes("Zrealizowane")) statusNormalized = "Zrealizowane";
+    // else if (s.includes("Oczekiwanie")) statusNormalized = "Oczekiwanie";
+    // else if (s.includes("W trakcie")) statusNormalized = "W trakcie";
+    // else if (s && !["", "brak", "none", "null"].includes(s)) statusNormalized = rawStatus;
+    if (rawStatus === "Zrealizowane" || s === "zrealizowane") statusNormalized = "Zrealizowane";
+    else if (rawStatus === "Oczekiwanie" || s === "oczekiwanie") statusNormalized = "Oczekiwanie";
+    else if (rawStatus === "W trakcie" || s === "w trakcie") statusNormalized = "W trakcie";
     else if (s && !["", "brak", "none", "null"].includes(s)) statusNormalized = rawStatus;
 
     // deadline - several possible field names
-    let deadline = o?.next_deadline ?? o?.deadline ?? o?.data_deadline ?? o?.deadline_date ?? null;
+    let deadline = o?.next_deadline ?? o?.data_potwierdzona ?? null;
     if (deadline === null || deadline === "" || deadline === "null") deadline = "Brak";
 
     // timeline progress - numeric fallback
@@ -170,12 +174,39 @@ export default function OrdersPage() {
     setSortConfig({ key, direction });
 
     const sortedOrders = [...orders].sort((a, b) => {
-      const va = (a[key] ?? "").toString().toLowerCase();
-      const vb = (b[key] ?? "").toString().toLowerCase();
-      if (va < vb) return direction === "asc" ? -1 : 1;
-      if (va > vb) return direction === "asc" ? 1 : -1;
+      let va = a[key];
+      let vb = b[key];
+      // --------- SORTOWANIE DAT ---------
+      // Sprawdzamy, czy wartości wyglądają na daty YYYY-MM-DD
+      const isDateA = typeof va === "string" && /^\d{4}-\d{2}-\d{2}$/.test(va);
+      const isDateB = typeof vb === "string" && /^\d{4}-\d{2}-\d{2}$/.test(vb);
+
+      if (isDateA && isDateB) {
+        const da = new Date(va);
+        const db = new Date(vb);
+        return direction === "asc" ? da - db : db - da;
+      }
+
+      // --- SORTOWANIE LICZB ---
+      // Jeśli pola wyglądają jak liczby, to porównujemy je jako liczby
+      const na = parseFloat(va);
+      const nb = parseFloat(vb);
+
+      const aIsNumber = !isNaN(na);
+      const bIsNumber = !isNaN(nb);
+
+      if (aIsNumber && bIsNumber) {
+        return direction === "asc" ? na - nb : nb - na;
+      }
+
+      // --- SORTOWANIE TEKSTU ---
+      const sa = (va ?? "").toString().toLowerCase();
+      const sb = (vb ?? "").toString().toLowerCase();
+      if (sa < sb) return direction === "asc" ? -1 : 1;
+      if (sa > sb) return direction === "asc" ? 1 : -1;
       return 0;
     });
+
     setOrders(sortedOrders);
   };
 
@@ -255,8 +286,9 @@ export default function OrdersPage() {
   const handleAddComment = async () => {
     if (!selectedOrder) return;
 
-    const textValue = (comment || "").trim();
-    if (!textValue) {
+    // NIE USUWAMY SPACJI — tylko blokujemy pusty komentarz
+    const textValue = comment || "";
+    if (textValue.replace(/\s/g, "") === "") {
       alert("Komentarz nie może być pusty");
       return;
     }
@@ -267,7 +299,6 @@ export default function OrdersPage() {
         text: textValue,
         comment: textValue,
         tresc: textValue,
-        deadline: commentDeadline || null,
       };
 
       if (token) {
@@ -291,7 +322,6 @@ export default function OrdersPage() {
         form.append("text", textValue);
         form.append("comment", textValue);
         form.append("tresc", textValue);
-        if (commentDeadline) form.append("deadline", commentDeadline);
 
         const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
           method: "POST",
@@ -311,7 +341,6 @@ export default function OrdersPage() {
       await fetchComments(selectedOrder.id);
 
       setComment("");
-      setCommentDeadline("");
       alert("Komentarz został dodany!");
     } catch (err) {
       console.error("Błąd podczas dodawania komentarza:", err);
@@ -404,9 +433,15 @@ export default function OrdersPage() {
               <th onClick={() => handleSort("cena")} style={{ cursor: "pointer" }}>
                 Wartość Zamówienia {getSortIndicator("cena")}
               </th>
-              <th>Termometr</th>
-              <th>Komentarze</th>
-              <th>Deadline</th>
+              <th onClick={() => handleSort("data_oczekiwana")} style={{ cursor: "pointer" }}>
+                Termometr {getSortIndicator("data_oczekiwana")}
+              </th>
+              <th onClick={() => handleSort("comments_count_num")} style={{ cursor: "pointer" }}>
+                Komentarze {getSortIndicator("comments_count_num")}
+              </th>
+              <th onClick={() => handleSort("data_potwierdzona")} style={{ cursor: "pointer" }}>
+                Deadline {getSortIndicator("data_potwierdzona")}
+              </th>
               <th>Status</th>
               <th>Dodaj Komentarz</th>
             </tr>
@@ -475,7 +510,7 @@ export default function OrdersPage() {
                           textShadow: "1px 1px 2px rgba(0, 0, 0, 0.5)",
                         }}
                       >
-                        {order.data_potwierdzona ?? order.data_potwierdzona ?? "Brak"}
+                        {order.data_oczekiwana ?? order.data_otwarcia ?? "Brak"}
                       </span>
                     </div>
                   </td>
@@ -574,12 +609,7 @@ export default function OrdersPage() {
                       </div>
                       <small style={{ color: "#444" }}>
                         {c.date ?? c.created_at ?? ""}
-                        { (c.deadline ?? c.deadline_date) ? (
-                          <span style={{ color: "red", fontWeight: "bold", marginLeft: 8 }}>
-                            (Deadline: {c.deadline ?? c.deadline_date})
-                          </span>
-                        ) : null}
-                      </small>
+                      </small> 
                     </li>
                   ))}
                 </ul>
@@ -591,7 +621,7 @@ export default function OrdersPage() {
             {/* formularz dodania komentarza (wg comments.html) */}
             <div style={{ marginTop: 8 }}>
               <div className="form-group" style={{ marginBottom: 8 }}>
-                <label style={{ display: "block", marginBottom: 6 }}>Dodaj komentarz</label>
+                <label style={{ display: "block", marginBottom: 6, color: "black" }}>Dodaj komentarz</label>
                 <textarea
                   className="form-control"
                   value={comment}
@@ -600,7 +630,7 @@ export default function OrdersPage() {
                   style={{ width: "100%", padding: 8, borderRadius: 4 }}
                 />
               </div>
-              <div className="form-group" style={{ marginBottom: 12 }}>
+              {/* <div className="form-group" style={{ marginBottom: 12 }}>
                 <label style={{ display: "block", marginBottom: 6 }}>Deadline (opcjonalnie)</label>
                 <input
                   type="date"
@@ -609,7 +639,7 @@ export default function OrdersPage() {
                   onChange={(e) => setCommentDeadline(e.target.value)}
                   style={{ padding: 8, borderRadius: 4, width: "100%" }}
                 />
-              </div>
+              </div> */}
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <button onClick={handleAddComment} className="btn btn-primary" style={{ width: "48%" }}>
                   Dodaj
@@ -621,7 +651,7 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
-      )}
+      )};
     </div>
   );
 }
