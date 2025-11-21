@@ -5,7 +5,7 @@ import "../App.css";
 export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const pageSize = 100;
-  const [totalCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -20,96 +20,97 @@ export default function OrdersPage() {
 
   useEffect(() => {
     loadOrders();
-  }, [page, setPage]);
+  }, [page]);
 
   // helper: normalizuj pojedyncze zamówienie (status, deadline, progress, time_diff)
   const normalizeOrder = (o) => {
-    // status - robust detection
-    const rawStatus = o?.status ?? o?.stan ?? "";
-    const s = (rawStatus ?? "").toString().toLowerCase();
-    let statusNormalized = "Brak";
-    if (rawStatus === "Zrealizowane" || s === "zrealizowane") statusNormalized = "Zrealizowane";
-    else if (rawStatus === "Oczekiwanie" || s === "oczekiwanie") statusNormalized = "Oczekiwanie";
-    else if (rawStatus === "W trakcie" || s === "w trakcie") statusNormalized = "W trakcie";
-    else if (s && !["", "brak", "none", "null"].includes(s)) statusNormalized = rawStatus;
-    else if (o?.data_zakonczenia) statusNormalized = "Zrealizowane";
+    if (!o) return {};
 
-    // deadline - several possible field names
-    let deadline = o?.next_deadline ?? o?.data_potwierdzona ?? null;
-    if (deadline === null || deadline === "" || deadline === "null") deadline = "Brak";
+    // wymuszenie jednolitych pól jak w Django views.py
+    const numer = o.numer ?? o.nr ?? o.id ?? "";
+    const osoba = o.osoba ?? o.pracownik ?? o.user ?? "";
+    const cena = Number(o.cena ?? o.wartosc ?? 0);
 
-    // timeline progress - numeric fallback
-    let progress = Number(o?.timeline_progress_scaled ?? o?.timeline_progress ?? o?.progress ?? 0);
-    if (!Number.isFinite(progress)) progress = 0;
+    const data_potwierdzona =
+      o.data_potwierdzona ??
+      o.deadline ??
+      o.data_oczekiwana ??
+      "Brak";
 
-    // time diff / days left
-    let timeDiff = Number(o?.time_diff ?? o?.days_left ?? o?.days ?? NaN);
-    if (!Number.isFinite(timeDiff)) timeDiff = 9999;
+    // status – tak jak w backendzie
+    const raw = (o.status ?? o.stan ?? "").toString().trim();
+    let status = "Brak";
+    if (["Zrealizowane", "W trakcie", "Oczekiwanie"].includes(raw))
+      status = raw;
+    else if (o.data_zakonczenia) status = "Zrealizowane";
 
-    // overdue flag
-    const isOverdue = Boolean(o?.is_overdue) || timeDiff < 0;
+    // time_diff / days
+    const timeDiff = Number(o.time_diff ?? o.days_left ?? 9999);
 
-    // comments count — obsłuż różne nazwy / struktury
-    let commentsCount =
-      o?.comments_count ??
-      o?.comments_count_num ??
-      (Array.isArray(o?.comments) ? o.comments.length : undefined) ??
-      (Array.isArray(o?.comments_list) ? o.comments_list.length : undefined) ??
-      o?.comments_length ??
-      0;
-    if (Array.isArray(commentsCount)) commentsCount = commentsCount.length;
-    if (typeof commentsCount === "object" && commentsCount !== null && "length" in commentsCount) {
-      commentsCount = Number(commentsCount.length) || 0;
-    }
-    commentsCount = Number(commentsCount) || 0;
+    // komentarze
+    const commentsCount =
+      Number(
+        o.comments_count ??
+          (Array.isArray(o.comments) && o.comments.length) ??
+          0
+      );
 
     return {
       ...o,
-      statusNormalized,
-      deadlineValue: deadline,
-      timeline_progress_num: progress,
+      numer,
+      osoba,
+      cena,
+      deadlineValue: data_potwierdzona,
+      statusNormalized: status,
       time_diff_num: timeDiff,
-      is_overdue_bool: isOverdue,
-      comments_count: commentsCount,       // używane w UI
-      comments_count_num: commentsCount,   // wewnętrzny, numerowy
+      comments_count: commentsCount,
+      comments_count_num: commentsCount,
     };
   };
 
   const loadOrders = () => {
     setLoading(true);
+
     fetch(`http://127.0.0.1:8000/api/orders/?page=${page}&page_size=${pageSize}`)
       .then((res) => res.json())
       .then((data) => {
         const ordersList = Array.isArray(data) ? data : (data.results || []);
-        console.log("Pierwszy order:", ordersList[0]); // <- debug
-        // normalize all orders so UI uses consistent field names
+
+        // ⬇ tu ustawiamy totalCount z backendu
+        if (data.count !== undefined) {
+          setTotalCount(data.count);
+        } else {
+          // fallback — jeśli zwracasz listę bez paginacji
+          setTotalCount(ordersList.length);
+        }
+
         const normalized = ordersList.map(normalizeOrder);
         setOrders(normalized);
 
-        // pobierz rzeczywiste liczby komentarzy asynchronicznie i zaktualizuj stan
+        // pobieranie liczby komentarzy — uproszczone
         Promise.allSettled(
           normalized.map((o) =>
             fetch(`http://127.0.0.1:8000/comments/${o.id}/`)
-              .then((r) => r.ok ? r.json().catch(() => []) : [])
-              .then((resp) => {
-                if (Array.isArray(resp)) return { id: o.id, count: resp.length };
-                if (resp && Array.isArray(resp.comments)) return { id: o.id, count: resp.comments.length };
-                return { id: o.id, count: 0 };
-              })
+              .then((r) => r.json().catch(() => []))
+              .then((arr) => ({
+                id: o.id,
+                count: Array.isArray(arr) ? arr.length : 0,
+              }))
               .catch(() => ({ id: o.id, count: 0 }))
           )
         ).then((results) => {
           const counts = results
-            .filter((r) => r.status === "fulfilled")
-            .map((r) => r.value);
-          if (counts.length) {
-            setOrders((prev) =>
-              prev.map((o) => {
-                const found = counts.find((c) => c.id === o.id);
-                return found ? { ...o, comments_count: found.count, comments_count_num: found.count } : o;
-              })
-            );
-          }
+            .filter((x) => x.status === "fulfilled")
+            .map((x) => x.value);
+
+          setOrders((prev) =>
+            prev.map((o) => {
+              const found = counts.find((c) => c.id === o.id);
+              return found
+                ? { ...o, comments_count: found.count, comments_count_num: found.count }
+                : o;
+            })  
+          );
         });
       })
       .catch((err) => {
@@ -118,6 +119,7 @@ export default function OrdersPage() {
       })
       .finally(() => setLoading(false));
   };
+
 
   // pomocnik: pobierz cookie
   const getCookie = (name) => {
