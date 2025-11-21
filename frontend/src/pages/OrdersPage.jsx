@@ -3,6 +3,9 @@ import OrderDetailPage from "./OrderDetailPage";
 import "../App.css";
 
 export default function OrdersPage() {
+  const [page, setPage] = useState(1);
+  const pageSize = 100;
+  const [totalCount] = useState(0);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -17,7 +20,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     loadOrders();
-  }, []);
+  }, [page, setPage]);
 
   // helper: normalizuj pojedyncze zamówienie (status, deadline, progress, time_diff)
   const normalizeOrder = (o) => {
@@ -25,14 +28,11 @@ export default function OrdersPage() {
     const rawStatus = o?.status ?? o?.stan ?? "";
     const s = (rawStatus ?? "").toString().toLowerCase();
     let statusNormalized = "Brak";
-    // if (s.includes("Zrealizowane")) statusNormalized = "Zrealizowane";
-    // else if (s.includes("Oczekiwanie")) statusNormalized = "Oczekiwanie";
-    // else if (s.includes("W trakcie")) statusNormalized = "W trakcie";
-    // else if (s && !["", "brak", "none", "null"].includes(s)) statusNormalized = rawStatus;
     if (rawStatus === "Zrealizowane" || s === "zrealizowane") statusNormalized = "Zrealizowane";
     else if (rawStatus === "Oczekiwanie" || s === "oczekiwanie") statusNormalized = "Oczekiwanie";
     else if (rawStatus === "W trakcie" || s === "w trakcie") statusNormalized = "W trakcie";
     else if (s && !["", "brak", "none", "null"].includes(s)) statusNormalized = rawStatus;
+    else if (o?.data_zakonczenia) statusNormalized = "Zrealizowane";
 
     // deadline - several possible field names
     let deadline = o?.next_deadline ?? o?.data_potwierdzona ?? null;
@@ -77,7 +77,7 @@ export default function OrdersPage() {
 
   const loadOrders = () => {
     setLoading(true);
-    fetch("http://127.0.0.1:8000/api/orders/")
+    fetch(`http://127.0.0.1:8000/api/orders/?page=${page}&page_size=${pageSize}`)
       .then((res) => res.json())
       .then((data) => {
         const ordersList = Array.isArray(data) ? data : (data.results || []);
@@ -463,16 +463,16 @@ export default function OrdersPage() {
                     <div
                       className="progress"
                       style={{
-                        height: 25,
-                        background: "#e9ecef",
-                        position: "relative",
-                        minWidth: "160px",
-                        whiteSpace: "nowrap",
-                        display: "flex",
-                        alignItems: "center",
+                      height: 25,
+                      backgroundColor: thermometerColor(order),   // <-- całe tło ma kolor termometru
+                      position: "relative",
+                      minWidth: "160px",
+                      whiteSpace: "nowrap",
+                      display: "flex",
+                      alignItems: "center",
+                      borderRadius: 4,
                       }}
                     >
-                     {/* mały wskaźnik koloru zawsze widoczny po lewej */}
                      <div
                        style={{
                          position: "absolute",
@@ -485,19 +485,6 @@ export default function OrdersPage() {
                          zIndex: 2,
                        }}
                      />
-                      <div
-                        className="progress-bar"
-                        role="progressbar"
-                        style={{
-                          width: `${Math.max(order.timeline_progress_num ?? 0, 6)}%`, // min widoczność
-                          transition: "width 1s ease",
-                          backgroundColor: thermometerColor(order),
-                          minWidth: "0",
-                          height: "100%",
-                          borderRadius: "4px",
-                         zIndex: 1,
-                        }}
-                      />
                       <span
                         className="data-label"
                         style={{
@@ -546,7 +533,8 @@ export default function OrdersPage() {
                   </td>
                   <td onClick={(ev) => ev.stopPropagation()}>
                     <button
-                      className="btn btn-primary btn-sm"
+                      //className="btn btn-primary btn-sm"
+                      className="btn report-btn"
                       onClick={() => {
                         setSelectedOrder(order);
                         fetchComments(order.id);
@@ -561,6 +549,27 @@ export default function OrdersPage() {
             })}
           </tbody>
         </table>
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "20px", gap: "10px" }}>
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+              className="btn report-btn"
+            >
+            ◀ Poprzednia
+            </button>
+
+            <span style={{ fontWeight: "bold", color:"black" }}>
+              Strona {page} / {Math.ceil(totalCount / pageSize)}
+            </span>
+
+            <button
+              disabled={page >= Math.ceil(totalCount / pageSize)}
+              onClick={() => setPage(page + 1)}
+              className="btn report-btn"
+            >
+            Następna ▶
+            </button>
+          </div>
       </div>
 
       {/* Modal komentarzy (wg comments.html) */}
@@ -641,10 +650,10 @@ export default function OrdersPage() {
                 />
               </div> */}
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <button onClick={handleAddComment} className="btn btn-primary" style={{ width: "48%" }}>
+                <button onClick={handleAddComment} className="btn report-btn" style={{ width: "48%" }}>
                   Dodaj
                 </button>
-                <button onClick={() => setShowModal(false)} className="btn btn-secondary" style={{ width: "48%" }}>
+                <button onClick={() => setShowModal(false)} className="btn report-btn" style={{ width: "48%" }}>
                   Zamknij
                 </button>
               </div>

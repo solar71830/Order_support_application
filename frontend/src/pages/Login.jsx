@@ -32,24 +32,45 @@ export default function Login({ onLogin }) {
     };
 
     return (
-        <form onSubmit={handleSubmit}>
-            <h2>Logowanie</h2>
+        <form onSubmit={handleSubmit} className="login-form">
+            <h2 className="login-title">Logowanie</h2>
+
             <input
                 type="text"
                 placeholder="Nazwa użytkownika"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
                 required
             />
+
             <input
                 type="password"
                 placeholder="Hasło"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
                 required
             />
-            <button type="submit">Zaloguj</button>
+
+            <button type="submit" className="btn report-btn">Zaloguj</button>
+
             {error && <div style={{ color: "red" }}>{error}</div>}
         </form>
     );
+
 }

@@ -63,15 +63,17 @@ export default function NewsPage() {
       {/* Przycisk do wyświetlenia formularza dodania nowej aktualności (dostępny dla wszystkich) */}
       <button
         onClick={() => setShowAddForm(!showAddForm)}
-        style={{
-          backgroundColor: "#38b6ff",
-          color: "#fff",
-          border: "none",
-          padding: "10px 20px",
-          borderRadius: "8px",
-          cursor: "pointer",
-          marginBottom: "20px",
-        }}
+        // style={{
+        //   backgroundColor: "#38b6ff",
+        //   color: "#fff",
+        //   border: "none",
+        //   padding: "10px 20px",
+        //   borderRadius: "8px",
+        //   cursor: "pointer",
+        //   marginBottom: "20px",
+        // }}
+        className="btn report-btn"
+          style={{ marginBottom: "10px" }}
       >
         {showAddForm ? "Ukryj formularz" : "Dodaj nową aktualność"}
       </button>
@@ -122,14 +124,8 @@ export default function NewsPage() {
           ></textarea>
           <button
             onClick={handleAddNews}
-            style={{
-              backgroundColor: "#38b6ff",
-              color: "#fff",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "8px",
-              cursor: "pointer",
-            }}
+            className="btn report-btn"
+            style={{ marginBottom: "10px" }}
           >
             Dodaj Aktualność
           </button>
@@ -194,27 +190,13 @@ export default function NewsPage() {
             <div style={{ display: "flex", gap: "8px", marginLeft: "10px" }}>
               <button
                 onClick={() => setEditingNews(item)}
-                style={{
-                  backgroundColor: "transparent",
-                  border: "none",
-                  color: "#fff",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  whiteSpace: "nowrap",
-                }}
+                className="btn report-btn"
               >
                 Edytuj
               </button>
               <button
                 onClick={() => handleDeleteNews(item.id)}
-                style={{
-                  backgroundColor: "transparent",
-                  border: "none",
-                  color: "#fff",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                  whiteSpace: "nowrap",
-                }}
+                className="btn report-btn"
               >
                 Usuń
               </button>
@@ -270,15 +252,7 @@ export default function NewsPage() {
           <div style={{ display: "flex", justifyContent: "space-between", gap: "10px" }}>
             <button
               onClick={() => handleEditNews(editingNews.id)}
-              style={{
-                backgroundColor: "#38b6ff",
-                color: "#fff",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                flex: 1,
-              }}
+              className="btn report-btn"
             >
               Zapisz zmiany
             </button>
@@ -293,6 +267,7 @@ export default function NewsPage() {
                 cursor: "pointer",
                 flex: 1,
               }}
+              className="btn report-btn"
             >
               Usuń
             </button>
@@ -307,6 +282,7 @@ export default function NewsPage() {
                 cursor: "pointer",
                 flex: 1,
               }}
+              className="btn report-btn"
             >
               Anuluj
             </button>

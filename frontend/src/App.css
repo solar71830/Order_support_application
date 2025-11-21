@@ -387,3 +387,26 @@ th, td {
   background: #7ed6fb; /* Jaśniejszy kolor tła po najechaniu */
   color: #222 !important; /* Ciemniejszy tekst po najechaniu */
 }
+
+.login-form {
+    background: white;
+    border: 5px solid #38b6ff;
+    padding: 20px;
+    width: 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-radius: 8px;
+}
+
+.login-title {
+    text-align: center;
+    margin-bottom: 10px;
+    color: #111;
+}
+
+.login-form input {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}

@@ -92,8 +92,19 @@ def comments(request, zamowienie_id):
 
 @csrf_exempt
 def orders_api(request):
-    data = list(Zlecenia.objects.values()[:50])  # tylko 50 pierwszych
-    return JsonResponse(data, safe=False)
+    page = int(request.GET.get("page", 1))
+    page_size = int(request.GET.get("page_size", 100))
+
+    start = (page - 1) * page_size
+    end = start + page_size
+
+    all_data = list(Zlecenia.objects.values())
+    paginated = all_data[start:end]
+
+    return JsonResponse({
+        "results": paginated,
+        "total": len(all_data)
+    })
 
 @csrf_exempt
 def order_detail(request, zamowienie_id):

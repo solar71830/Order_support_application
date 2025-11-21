@@ -22,12 +22,17 @@ export default function ReportsPage() {
     fetch("http://127.0.0.1:8000/api/orders/")
       .then((res) => res.json())
       .then((data) => {
-        setOrders(data);
-        const uniqueEmployees = getUniqueEmployees(data);
-        setEmployees(uniqueEmployees.map((name) => ({ name }))); // Przekształć na obiekty z `name`
-      })
-      .catch((err) => console.error("Błąd podczas pobierania zamówień:", err));
-  }, []);
+
+      // OBSŁUGA backendu który zwraca results[]
+      const list = Array.isArray(data) ? data : (data.results || []);
+
+      setOrders(list);
+
+      const uniqueEmployees = getUniqueEmployees(list);
+      setEmployees(uniqueEmployees.map((name) => ({ name }))); 
+    })
+    .catch((err) => console.error("Błąd podczas pobierania zamówień:", err));
+}, []);
 
     const handleGenerateReport = () => {
         console.log("Generowanie raportu rozpoczęte:", { reportType, selectedEmployees, selectedOrders });
@@ -251,7 +256,7 @@ export default function ReportsPage() {
           >
             {orders
               .filter((order) =>
-                order.numer.toLowerCase().includes(orderSearch.toLowerCase())
+                (order.numer || "").toString().toLowerCase().includes(orderSearch.toLowerCase())
               )
               .map((order, index) => (
                 <label key={index} style={{ display: "block", marginBottom: "5px", color: "#111" }}>

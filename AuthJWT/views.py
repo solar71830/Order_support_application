@@ -265,6 +265,13 @@ def login_view(request): #???
 
 
 #raporty
+
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+pdfmetrics.registerFont(TTFont("DejaVu", "AuthJWT/static/fonts/DejaVuSans.ttf"))
+
+
 @csrf_exempt
 @jwt_required
 def user_report(request):
@@ -294,11 +301,11 @@ def user_report(request):
     width, height = A4
 
     # Nagłówek
-    p.setFont("Helvetica-Bold", 16)
+    p.setFont("DejaVu", 16)
     p.drawCentredString(width / 2, height - 60, "RAPORT PRACOWNIKA")
 
     # Firma i data
-    p.setFont("Helvetica", 12)
+    p.setFont("DejaVu", 12)
     p.drawString(40, height - 100, "Nazwa firmy/logo")
     p.drawRightString(width - 40, height - 100, f"Data dokumentu: {datetime.now().strftime('%Y-%m-%d')}")
 
@@ -308,21 +315,21 @@ def user_report(request):
 
     # Tabela zleceń
     p.drawString(40, height - 200, "Lp.")
-    p.drawString(80, height - 200, "Numer zamówienia")
-    p.drawString(200, height - 200, "Wartość zamówienia")
-    p.drawString(320, height - 200, "Termin")
-    p.drawString(400, height - 200, "Firma")
+    p.drawString(65, height - 200, "Numer zamówienia")
+    p.drawString(215, height - 200, "Wartość zamówienia")
+    p.drawString(350, height - 200, "Termin")
+    p.drawString(430, height - 200, "Firma")
 
     y = height - 220
-    font_name = "Helvetica"
-    font_size = 12
+    font_name = "DejaVu"
+    font_size = 10
     max_width_firma = 200  # Maksymalna szerokość tekstu w punktach dla "Firma"
 
     for idx, zlecenie in enumerate(zlecenia, start=1):
         p.drawString(40, y, str(idx))
-        p.drawString(80, y, zlecenie.numer)
-        p.drawString(200, y, str(zlecenie.cena))
-        p.drawString(320, y, zlecenie.data_zamowienia.strftime('%Y-%m-%d'))
+        p.drawString(65, y, zlecenie.numer)
+        p.drawString(215, y, str(zlecenie.cena))
+        p.drawString(350, y, zlecenie.data_zamowienia.strftime('%Y-%m-%d'))
 
         # Formatowanie "Firma"
         firma = zlecenie.firma
@@ -333,14 +340,14 @@ def user_report(request):
                 if p.stringWidth(current_line + word, font_name, font_size) <= max_width_firma:
                     current_line += word + " "
                 else:
-                    p.drawString(400, y, current_line.strip())
+                    p.drawString(430, y, current_line.strip())
                     y -= 20
                     current_line = word + " "
             if current_line:  # Rysuj ostatnią linię
-                p.drawString(400, y, current_line.strip())
+                p.drawString(430, y, current_line.strip())
                 y -= 20
         else:
-            p.drawString(400, y, firma)
+            p.drawString(430, y, firma)
 
         y -= 20
         if y < 50:  # Przejście na nową stronę
@@ -348,7 +355,7 @@ def user_report(request):
             y = height - 50
 
     # Podpis
-    p.setFont("Helvetica", 12)
+    p.setFont("DejaVu", 12)
     p.drawString(40, y - 40, "Wykonał:")
     p.drawString(40, y - 60, osoba)
     p.drawString(40, y - 80, datetime.now().strftime('%Y-%m-%d'))
@@ -388,11 +395,11 @@ def order_report(request):
     width, height = A4
 
     # Nagłówek
-    p.setFont("Helvetica-Bold", 16)
+    p.setFont("DejaVu", 16)
     p.drawCentredString(width / 2, height - 60, "RAPORT ZAMÓWIENIA")
 
     # Firma i data
-    p.setFont("Helvetica", 12)
+    p.setFont("DejaVu", 12)
     p.drawString(40, height - 100, "Nazwa firmy/logo")
     p.drawRightString(width - 40, height - 100, f"Data dokumentu: {datetime.now().strftime('%Y-%m-%d')}")
 
@@ -417,7 +424,7 @@ def order_report(request):
     towar = zlecenie.towar
     max_width = 300  # Maksymalna szerokość tekstu w punktach
     font_size = 12
-    font_name = "Helvetica"
+    font_name = "DejaVu"
 
     # Ustaw czcionkę
     p.setFont(font_name, font_size)
@@ -461,7 +468,7 @@ def order_report(request):
             y = height - 50
 
     # Podpis
-    p.setFont("Helvetica", 12)
+    p.setFont("DejaVu", 12)
     p.drawString(40, y - 40, "Wykonał:")
     p.drawString(40, y - 60, zlecenie.osoba)
     p.drawString(40, y - 80, datetime.now().strftime('%Y-%m-%d'))

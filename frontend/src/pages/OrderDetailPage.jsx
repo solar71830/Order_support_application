@@ -181,15 +181,14 @@ export default function OrderDetailPage({ orderId, onBack }) {
       <div style={{ marginTop: "52px", padding: "20px", maxWidth: "1200px", margin: "52px auto" }}>
         <button
           onClick={onBack}
-          style={{
-            backgroundColor: "#38b6ff",
-            color: "#fff",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            cursor: "pointer",
-            marginBottom: "20px",
-          }}
+          className="btn report-btn"
+          // style={{
+          //   border: "none",
+          //   padding: "10px 20px",
+          //   borderRadius: "8px",
+          //   cursor: "pointer",
+          //   marginBottom: "20px",
+          // }}
         >
           ← Powrót do listy zamówień
         </button>
@@ -214,6 +213,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
             cursor: "pointer",
             marginBottom: "20px",
           }}
+          className="btn report-btn"
         >
           ← Powrót do listy zamówień
         </button>
@@ -238,6 +238,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
           cursor: "pointer",
           marginBottom: "20px",
         }}
+        className="btn report-btn"
       >
         ← Powrót do listy zamówień
       </button>
@@ -414,6 +415,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
             borderRadius: "8px",
             cursor: "pointer",
           }}
+          className="btn report-btn"
         >
           Dodaj komentarz
         </button>
