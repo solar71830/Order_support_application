@@ -436,7 +436,7 @@ export default function OrdersPage() {
                 Wartość Zamówienia {getSortIndicator("cena")}
               </th>
               <th onClick={() => handleSort("data_oczekiwana")} style={{ cursor: "pointer" }}>
-                Termometr {getSortIndicator("data_oczekiwana")}
+                Data wprowadzenia {getSortIndicator("data_oczekiwana")}
               </th>
               <th onClick={() => handleSort("comments_count_num")} style={{ cursor: "pointer" }}>
                 Komentarze {getSortIndicator("comments_count_num")}
