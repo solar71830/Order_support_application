@@ -26,26 +26,39 @@ export default function OrdersPage() {
   const normalizeOrder = (o) => {
     if (!o) return {};
 
-    // wymuszenie jednolitych pól jak w Django views.py
+    // Pola podstawowe
     const numer = o.numer ?? o.nr ?? o.id ?? "";
     const osoba = o.osoba ?? o.pracownik ?? o.user ?? "";
     const cena = Number(o.cena ?? o.wartosc ?? 0);
 
+    // data potwierdzona / deadline
     const data_potwierdzona =
       o.data_potwierdzona ??
       o.deadline ??
       o.data_oczekiwana ??
-      "Brak";
+      null;
 
-    // status – tak jak w backendzie
+    // --- STATUS ---
     const raw = (o.status ?? o.stan ?? "").toString().trim();
-    let status = "Brak";
-    if (["Zrealizowane", "W trakcie", "Oczekiwanie"].includes(raw))
-      status = raw;
-    else if (o.data_zakonczenia) status = "Zrealizowane";
+    let status = raw || "Brak";
 
-    // time_diff / days
-    const timeDiff = Number(o.time_diff ?? o.days_left ?? 9999);
+    // jeżeli jest data zamknięcia → ustaw Zrealizowane
+    if (o.data_zamkniecia) {
+      status = "Zrealizowane";
+    }
+
+    // --- LICZENIE DNI ---
+    const parseDate = (d) => (d ? new Date(d) : null);
+
+    const d1 = parseDate(o.data_zamowienia);
+    const d2 = parseDate(o.data_potwierdzona);
+
+    let timeDiff = null;
+
+    if (d1 && d2) {
+      const ms = d2 - d1;
+      timeDiff = Math.round(ms / (1000 * 60 * 60 * 24));
+    }
 
     // komentarze
     const commentsCount =
@@ -67,6 +80,7 @@ export default function OrdersPage() {
       comments_count_num: commentsCount,
     };
   };
+
 
   const loadOrders = () => {
     setLoading(true);
@@ -238,7 +252,7 @@ export default function OrdersPage() {
     const days = parseDays(order.time_diff_num);
     if (days <= 3) return "#dc3545";
     if (days <= 7) return "#ffc107";
-    return "#28a745";
+    return "#e2ff07ff";
   };
 
   // aktualizuj status zamówienia (zgodnie z template index.html backend expects POST to update_status url)
@@ -435,8 +449,8 @@ export default function OrdersPage() {
               <th onClick={() => handleSort("cena")} style={{ cursor: "pointer" }}>
                 Wartość Zamówienia {getSortIndicator("cena")}
               </th>
-              <th onClick={() => handleSort("data_oczekiwana")} style={{ cursor: "pointer" }}>
-                Data wprowadzenia {getSortIndicator("data_oczekiwana")}
+              <th onClick={() => handleSort("data_zamowienia")} style={{ cursor: "pointer" }}>
+                Data wprowadzenia {getSortIndicator("data_zamowienia")}
               </th>
               <th onClick={() => handleSort("comments_count_num")} style={{ cursor: "pointer" }}>
                 Komentarze {getSortIndicator("comments_count_num")}
