@@ -22,6 +22,21 @@ export default function OrdersPage() {
     loadOrders();
   }, [page]);
 
+
+  const daysUntilDeadline = (o) => {
+    if (!o || !o.data_oczekiwana) return null;
+
+    const today = new Date();
+    const deadline = new Date(o.data_oczekiwana);
+
+    // Wyzerowanie czasu, żeby uniknąć problemów strefowych
+    today.setHours(0, 0, 0, 0);
+    deadline.setHours(0, 0, 0, 0);
+
+    const ms = deadline - today;
+    return Math.round(ms / (1000 * 60 * 60 * 24));
+  };
+
   // helper: normalizuj pojedyncze zamówienie (status, deadline, progress, time_diff)
   const normalizeOrder = (o) => {
     if (!o) return {};
@@ -41,24 +56,35 @@ export default function OrdersPage() {
     // --- STATUS ---
     const raw = (o.status ?? o.stan ?? "").toString().trim();
     let status = raw || "Brak";
-
-    // jeżeli jest data zamknięcia → ustaw Zrealizowane
-    if (o.data_zamkniecia) {
+    
+    if(status === "NULL" || status === "") {
+      status = "Brak";
+    } else if (status === "Oczekiwanie") {
+      status = "Oczekiwanie";
+    } else if (status === "W trakcie") {
+      status = "W trakcie";
+    } else if (status === "Zrealizowane") {
       status = "Zrealizowane";
     }
+    // jeżeli jest data zamknięcia → ustaw Zrealizowane
+    // if (o.data_zamkniecia != 'NULL' ) {
+    //   status = "Zrealizowane";
+    // }
 
     // --- LICZENIE DNI ---
-    const parseDate = (d) => (d ? new Date(d) : null);
+    // const parseDate = (d) => (d ? new Date(d) : null);
 
-    const d1 = parseDate(o.data_zamowienia);
-    const d2 = parseDate(o.data_potwierdzona);
+    // const d1 = parseDate(o.data_zamowienia);
+    // const d2 = parseDate(o.data_potwierdzona);
 
-    let timeDiff = null;
+    // let timeDiff = null;
 
-    if (d1 && d2) {
-      const ms = d2 - d1;
-      timeDiff = Math.round(ms / (1000 * 60 * 60 * 24));
-    }
+    // if (d1 && d2) {
+    //   const ms = d2 - d1;
+    //   timeDiff = Math.round(ms / (1000 * 60 * 60 * 24));
+    // }
+
+    const timeDiff = daysUntilDeadline(o);
 
     // komentarze
     const commentsCount =
@@ -243,16 +269,16 @@ export default function OrdersPage() {
   // logika kolorów i textual label dla termometru - używa znormalizowanych pól
   const thermometerColor = (order) => {
     if (!order) return "#28a745";
-    // Jeśli status to Zrealizowane -> zawsze zielony
+
     if (order.statusNormalized === "Zrealizowane") return "#28a745";
 
-    // jeśli oznaczony jako overdue w backendzie lub wykryty lokalnie
-    if (order.is_overdue_bool) return "#dc3545";
-
     const days = parseDays(order.time_diff_num);
-    if (days <= 3) return "#dc3545";
-    if (days <= 7) return "#ffc107";
-    return "#e2ff07ff";
+    if (days === null) return "#6c757d";
+
+    if (days < 0) return "#dc3545";    // po terminie
+    if (days <= 3) return "#dc3545";   // 0-3 dni
+    if (days <= 7) return "#ffc107";   // 4-7 dni
+    return "#28a745";                  // więcej niż 7 dni
   };
 
   // aktualizuj status zamówienia (zgodnie z template index.html backend expects POST to update_status url)
@@ -450,13 +476,13 @@ export default function OrdersPage() {
                 Wartość Zamówienia {getSortIndicator("cena")}
               </th>
               <th onClick={() => handleSort("data_zamowienia")} style={{ cursor: "pointer" }}>
-                Data wprowadzenia {getSortIndicator("data_zamowienia")}
+                Data zamówienia {getSortIndicator("data_zamowienia")}
               </th>
               <th onClick={() => handleSort("comments_count_num")} style={{ cursor: "pointer" }}>
                 Komentarze {getSortIndicator("comments_count_num")}
               </th>
-              <th onClick={() => handleSort("data_potwierdzona")} style={{ cursor: "pointer" }}>
-                Deadline {getSortIndicator("data_potwierdzona")}
+              <th onClick={() => handleSort("data_oczekiwana")} style={{ cursor: "pointer" }}>
+                Deadline {getSortIndicator("data_oczekiwana")}
               </th>
               <th>Status</th>
               <th>Dodaj Komentarz</th>
@@ -475,57 +501,70 @@ export default function OrdersPage() {
                   <td>{order.numer || order.id}</td>
                   <td>{order.osoba || "Brak"}</td>
                   <td>{order.cena}</td>
-                  <td>
-                    <div
-                      className="progress"
-                      style={{
-                      height: 25,
-                      backgroundColor: thermometerColor(order),   // <-- całe tło ma kolor termometru
-                      position: "relative",
-                      minWidth: "160px",
-                      whiteSpace: "nowrap",
-                      display: "flex",
-                      alignItems: "center",
-                      borderRadius: 4,
-                      }}
-                    >
-                     <div
-                       style={{
-                         position: "absolute",
-                         left: 0,
-                         top: 0,
-                         bottom: 0,
-                         width: 8,
-                         backgroundColor: thermometerColor(order),
-                         borderRadius: "4px 0 0 4px",
-                         zIndex: 2,
-                       }}
-                     />
+                  <td>{order.data_zamowienia}</td>
+                      {/* <div
+                        className="progress"
+                        style={{
+                          height: 25,
+                          backgroundColor: "#f0f0f0",      // ⬅️ neutralne tło zamiast thermometerColor
+                          position: "relative",
+                          minWidth: "160px",
+                          whiteSpace: "nowrap",
+                          display: "flex",
+                          alignItems: "center",
+                          borderRadius: 4,
+                        }}
+                      > 
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          width: 8,
+                          backgroundColor: "#999",        // ⬅️ neutralny pasek zamiast kolorowego
+                          borderRadius: "4px 0 0 4px",
+                          zIndex: 2,
+                        }}
+                      />
                       <span
                         className="data-label"
                         style={{
                           position: "absolute",
                           left: "50%",
                           transform: "translateX(-50%)",
-                          color: "#fff",
+                          color: "#333",
                           fontWeight: "bold",
                           whiteSpace: "nowrap",
-                          textShadow: "1px 1px 2px rgba(0, 0, 0, 0.5)",
-                        }}
-                      >
-                        {order.data_oczekiwana ?? order.data_otwarcia ?? "Brak"}
+                          }}
+                        >
+                        {order.data_zamowienia  ?? "Brak"}
                       </span>
                     </div>
-                  </td>
+                  </td> */}
+
                   <td>{order.comments_count ?? 0}</td>
-                  <td style={{ textAlign: "center" }}>
+                  {/* <td style={{ textAlign: "center" }}>
                     <span style={{
                       color: order.is_overdue_bool ? "red" : "#111",
                       fontWeight: order.is_overdue_bool ? "700" : "400",
                     }}>
                       {order.deadlineValue}
                     </span>
+                  </td> */}
+
+                  <td style={{
+                    textAlign: "center",
+                    backgroundColor: thermometerColor(order),   // ⬅️ TERAZ KOLOR W TYM MIEJSCU
+                    color: "#fff",
+                    fontWeight: "bold",
+                    borderRadius: 4,
+                    }}>
+                    <span>
+                      {order.deadlineValue}
+                    </span>
                   </td>
+
                   <td onClick={(ev) => ev.stopPropagation()}>
                     <select
                       value={order.statusNormalized || "Brak"}
