@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import OrderDetailPage from "./OrderDetailPage";
 import "../App.css";
 
-export default function OrdersPage() {
+export default function OrdersPage({token}) {
   const [page, setPage] = useState(1);
   const pageSize = 100;
   const [totalCount, setTotalCount] = useState(0);
@@ -111,7 +111,7 @@ export default function OrdersPage() {
   const loadOrders = () => {
     setLoading(true);
 
-    fetch(`http://127.0.0.1:8000/api/orders/?page=${page}&page_size=${pageSize}`)
+    fetch(`http://127.0.0.1:8000/api/orders/?page=${page}&page_size=${pageSize}`,{headers:{  Authorization: `Bearer ${token}`}})
       .then((res) => res.json())
       .then((data) => {
         const ordersList = Array.isArray(data) ? data : (data.results || []);
@@ -128,9 +128,12 @@ export default function OrdersPage() {
         setOrders(normalized);
 
         // pobieranie liczby komentarzy — uproszczone
+        
         Promise.allSettled(
+          
           normalized.map((o) =>
-            fetch(`http://127.0.0.1:8000/comments/${o.id}/`)
+            fetch(`http://127.0.0.1:8000/comments/${o.id}/`,{headers:{  Authorization: `Bearer ${token}`}})
+          
               .then((r) => r.json().catch(() => []))
               .then((arr) => ({
                 id: o.id,
@@ -170,7 +173,7 @@ export default function OrdersPage() {
   // pobierz komentarze dla zamówienia — ZWRACA Promise z listą i aktualizuje licznik w tabeli
   const fetchComments = (orderId) => {
     setCommentsLoading(true);
-    return fetch(`http://127.0.0.1:8000/comments/${orderId}/`)
+    return fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {headers:{  Authorization: `Bearer ${token}`}})
       .then(async (res) => {
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
@@ -283,7 +286,7 @@ export default function OrdersPage() {
 
   // aktualizuj status zamówienia (zgodnie z template index.html backend expects POST to update_status url)
   const updateOrderStatus = async (orderId, newStatus) => {
-    const token = localStorage.getItem("token");
+    //const token = localStorage.getItem("token");
     try {
       if (token) {
         // jeśli używamy JWT -> wysyłamy JSON z Authorization
@@ -307,7 +310,7 @@ export default function OrdersPage() {
         const res = await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
           method: "POST",
           credentials: "include",
-          headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
+          headers: csrftoken ? { "X-CSRFToken": csrftoken, Authorization: `Bearer ${token}`, } : {},
           body: form,
         });
         if (!res.ok) {
@@ -336,22 +339,24 @@ export default function OrdersPage() {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const jsonPayload = {
-        text: textValue,
-        comment: textValue,
-        tresc: textValue,
-      };
-
+      //const token = localStorage.getItem("token");
+      
+      const formData = new URLSearchParams();
+      formData.append("text", textValue);
+      formData.append("comment", textValue);
+      formData.append("tresc", textValue);
+      
       if (token) {
+        
         const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(jsonPayload),
+          body: formData.toString(),
         });
+        
         if (!res.ok) {
           const text = await res.text();
           let parsed;
@@ -368,7 +373,7 @@ export default function OrdersPage() {
         const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
           method: "POST",
           credentials: "include",
-          headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
+          headers: {Authorization: `Bearer ${token}` },
           body: form,
         });
         if (!res.ok) {

@@ -17,7 +17,7 @@ export default function Login({ onLogin }) {
                 method: "POST",
                 body: formData,
             });
-            console.log(res, "to jest odpowiedź");
+            
             if (res.ok) {
                 const data = await res.json();
                 onLogin(data.token,username); // Przekazujemy token do komponentu nadrzędnego

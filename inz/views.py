@@ -5,10 +5,37 @@ from datetime import datetime
 import logging
 import numpy as np  # Upewnij się, że numpy jest zainstalowany
 from django.views.decorators.csrf import csrf_exempt
+import jwt
 
 logger = logging.getLogger(__name__)
 
+
+def jwt_required(func): 
+    def wrapper(request, *args,**kwargs):
+        
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return JsonResponse({"error": "Brak nagłówka autoryzacji"})
+        if(auth_header.startswith("Bearer")):
+            token = auth_header.split(" ")[1] #dla Bearer ...token...
+        else:
+            token = auth_header
+        try:
+            private_key = "django-insecure-14g0@on!f@q-cr%&rvnd%v1vy*-jpt5dy-wx8(qlm5urg)nrm_"
+            payload = jwt.decode(token,private_key,algorithms="HS256")
+            request.jwt_payload = payload
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({"error":"Przedawniony token"})
+        except jwt.InvalidTokenError:
+            return JsonResponse({"error":"Nieprawidłowy token"})
+        except Exception:
+            return JsonResponse({"error":"Błąd"})
+        return func(request,*args,**kwargs)
+    return wrapper
+
+
 @csrf_exempt
+@jwt_required
 def index(request):
     today = datetime.now()
 
@@ -57,6 +84,7 @@ def index(request):
     return render(request, 'index.html', {'zamowienia': zamowienia_data, 'unique_people': unique_people})
 
 @csrf_exempt
+#@jwt_required
 def update_status(request, zamowienie_id):
     if request.method == 'POST':
         zamowienie = get_object_or_404(Zlecenia, id=zamowienie_id)
@@ -68,12 +96,13 @@ def update_status(request, zamowienie_id):
     return HttpResponse("Nieprawidłowe żądanie", status=400)
 
 @csrf_exempt
+@jwt_required
 def comments(request, zamowienie_id):
+    print(request, "to jest request")
     zamowienie = get_object_or_404(Zlecenia, id=zamowienie_id)
     if request.method == 'POST':
         text = request.POST.get('comment')
         deadline = request.POST.get('deadline')
-        
         # Logowanie danych
         logger.info(f"Received data: comment={text}, deadline={deadline}")
         
