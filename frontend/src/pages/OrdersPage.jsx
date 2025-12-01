@@ -5,72 +5,65 @@ import "../App.css";
 export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const pageSize = 100;
+
   const [totalCount, setTotalCount] = useState(0);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [comment, setComment] = useState(""); // treść komentarza w modal
-  //const [commentDeadline, setCommentDeadline] = useState(""); // deadline w formularzu komentarza
-  const [commentsList, setCommentsList] = useState([]); // pobrane komentarze dla wybranego zamówienia
+  const [comment, setComment] = useState("");
+  const [commentsList, setCommentsList] = useState([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-  const [searchTerm, setSearchTerm] = useState(""); // Wyszukiwanie
-  const [selectedOrderDetail, setSelectedOrderDetail] = useState(null); // nowe: do wyświetlenia szczegółów
 
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
+  const [reloadFlag, setReloadFlag] = useState(false);
+
+  // ----------------------------------------------
+  // LOAD ORDERS WHEN PAGE CHANGES
+  // ----------------------------------------------
   useEffect(() => {
     loadOrders();
-  }, [page]);
+  }, [page, reloadFlag]);
 
-
-  // Liczenie dni do deadline
+  // ----------------------------------------------
+  // CALCULATE DAYS UNTIL DEADLINE
+  // ----------------------------------------------
   const daysUntilDeadline = (o) => {
     if (!o || !o.data_oczekiwana) return null;
-
     const today = new Date();
     const deadline = new Date(o.data_oczekiwana);
 
-    // Wyzerowanie czasu, żeby uniknąć problemów strefowych
     today.setHours(0, 0, 0, 0);
     deadline.setHours(0, 0, 0, 0);
 
-    const ms = deadline - today;
-    return Math.round(ms / (1000 * 60 * 60 * 24));
+    return Math.round((deadline - today) / (1000 * 60 * 60 * 24));
   };
 
-  // helper: normalizuj pojedyncze zamówienie (status, deadline, progress, time_diff)
+  // ----------------------------------------------
+  // NORMALIZE ORDER
+  // ----------------------------------------------
   const normalizeOrder = (o) => {
     if (!o) return {};
 
-    // Pola podstawowe
     const numer = o.numer ?? o.nr ?? o.id ?? "";
     const osoba = o.osoba ?? o.pracownik ?? o.user ?? "";
     const cena = Number(o.cena ?? o.wartosc ?? 0);
 
-    // data potwierdzona / deadline
     const data_potwierdzona =
       o.data_potwierdzona ??
       o.deadline ??
       o.data_oczekiwana ??
       null;
 
-    // --- STATUS ---
-    const raw = (o.status ?? o.stan ?? "").toString().trim();
-    let status = raw || "Brak";
-    
-    if(status === "NULL" || status === "") {
-      status = "Brak";
-    } else if (status === "Oczekiwanie") {
-      status = "Oczekiwanie";
-    } else if (status === "W trakcie") {
-      status = "W trakcie";
-    } else if (status === "Zrealizowane") {
-      status = "Zrealizowane";
-    }
+    let status = o.status ?? o.stan ?? "Brak";
+    status = status === "NULL" || status === "" ? "Brak" : status;
 
     const timeDiff = daysUntilDeadline(o);
 
-    // komentarze
     const commentsCount =
       Number(
         o.comments_count ??
@@ -91,27 +84,35 @@ export default function OrdersPage() {
     };
   };
 
-
+  // ----------------------------------------------
+  // LOAD ORDERS WITH FIXED PAGINATION LOGIC
+  // ----------------------------------------------
   const loadOrders = () => {
     setLoading(true);
 
     fetch(`http://127.0.0.1:8000/api/orders/?page=${page}&page_size=${pageSize}`)
       .then((res) => res.json())
       .then((data) => {
-        const ordersList = Array.isArray(data) ? data : (data.results || []);
+        const results = data.results || (Array.isArray(data) ? data : []);
+        const normalized = results.map(normalizeOrder);
 
-        // ⬇ tu ustawiamy totalCount z backendu
-        if (data.count !== undefined) {
-          setTotalCount(data.count);
-        } else {
-          // fallback — jeśli zwracasz listę bez paginacji
-          setTotalCount(ordersList.length);
-        }
-
-        const normalized = ordersList.map(normalizeOrder);
         setOrders(normalized);
 
-        // pobieranie liczby komentarzy — uproszczone
+        // -------------- FIXED PAGINATION LOGIC ----------------
+        if (typeof data.count === "number") {
+          // BACKEND MA PAGINACJĘ — DRF
+          setTotalCount(data.count);
+        } else if (data.next || data.previous) {
+          // Backend ma paginację, ale nie zwraca count
+          // Szacujemy liczbę rekordów
+          setTotalCount(page * pageSize + results.length);
+        } else {
+          // Backend NIE ma paginacji — zwraca całą listę
+          setTotalCount(results.length);
+        }
+        // ------------------------------------------------------
+
+        // Load comment counts for each order
         Promise.allSettled(
           normalized.map((o) =>
             fetch(`http://127.0.0.1:8000/comments/${o.id}/`)
@@ -133,7 +134,7 @@ export default function OrdersPage() {
               return found
                 ? { ...o, comments_count: found.count, comments_count_num: found.count }
                 : o;
-            })  
+            })
           );
         });
       })
@@ -144,35 +145,33 @@ export default function OrdersPage() {
       .finally(() => setLoading(false));
   };
 
-
-  // pomocnik: pobierz cookie
+  // ----------------------------------------------
+  // GET COOKIE
+  // ----------------------------------------------
   const getCookie = (name) => {
     const match = document.cookie.match(new RegExp("(^|; )" + name + "=([^;]*)"));
     return match ? decodeURIComponent(match[2]) : null;
   };
 
-  // pobierz komentarze dla zamówienia — ZWRACA Promise z listą i aktualizuje licznik w tabeli
+  // ----------------------------------------------
+  // FETCH COMMENTS
+  // ----------------------------------------------
   const fetchComments = (orderId) => {
     setCommentsLoading(true);
     return fetch(`http://127.0.0.1:8000/comments/${orderId}/`)
       .then(async (res) => {
-        if (!res.ok) {
-          const txt = await res.text().catch(() => "");
-          console.warn("fetchComments non-ok:", res.status, txt);
-          return [];
-        }
+        if (!res.ok) return [];
         return res.json().catch(() => []);
       })
       .then((data) => {
-        let list = [];
-        if (!data) list = [];
-        else if (Array.isArray(data)) list = data;
-        else if (data.comments) list = Array.isArray(data.comments) ? data.comments : [];
-        else list = [];
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data.comments)
+          ? data.comments
+          : [];
 
         setCommentsList(list);
 
-        // zaktualizuj licznik komentarzy w liście zamówień
         setOrders((prev) =>
           prev.map((o) =>
             o.id === orderId
@@ -181,17 +180,18 @@ export default function OrdersPage() {
           )
         );
 
-        // zwróć listę do wywołującego
         return list;
       })
-      .catch((err) => {
-        console.error("Błąd fetchComments:", err);
+      .catch(() => {
         setCommentsList([]);
         return [];
       })
       .finally(() => setCommentsLoading(false));
   };
 
+  // ----------------------------------------------
+  // SORTING
+  // ----------------------------------------------
   const handleSort = (key) => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -199,79 +199,65 @@ export default function OrdersPage() {
     }
     setSortConfig({ key, direction });
 
-    const sortedOrders = [...orders].sort((a, b) => {
+    const sorted = [...orders].sort((a, b) => {
       let va = a[key];
       let vb = b[key];
-      // --------- SORTOWANIE DAT ---------
-      // Sprawdzamy, czy wartości wyglądają na daty YYYY-MM-DD
+
       const isDateA = typeof va === "string" && /^\d{4}-\d{2}-\d{2}$/.test(va);
       const isDateB = typeof vb === "string" && /^\d{4}-\d{2}-\d{2}$/.test(vb);
 
       if (isDateA && isDateB) {
-        const da = new Date(va);
-        const db = new Date(vb);
-        return direction === "asc" ? da - db : db - da;
+        return direction === "asc" ? new Date(va) - new Date(vb) : new Date(vb) - new Date(va);
       }
 
-      // --- SORTOWANIE LICZB ---
-      // Jeśli pola wyglądają jak liczby, to porównujemy je jako liczby
       const na = parseFloat(va);
       const nb = parseFloat(vb);
 
-      const aIsNumber = !isNaN(na);
-      const bIsNumber = !isNaN(nb);
-
-      if (aIsNumber && bIsNumber) {
+      if (!isNaN(na) && !isNaN(nb)) {
         return direction === "asc" ? na - nb : nb - na;
       }
 
-      // --- SORTOWANIE TEKSTU ---
       const sa = (va ?? "").toString().toLowerCase();
       const sb = (vb ?? "").toString().toLowerCase();
+
       if (sa < sb) return direction === "asc" ? -1 : 1;
       if (sa > sb) return direction === "asc" ? 1 : -1;
       return 0;
     });
 
-    setOrders(sortedOrders);
+    setOrders(sorted);
   };
 
   const getSortIndicator = (key) => {
-    if (sortConfig.key === key) {
+    if (sortConfig.key === key)
       return sortConfig.direction === "asc" ? "▲" : "▼";
-    }
     return "▲▼";
   };
 
-  // helper: normalizuj liczbę dni (time_diff może być string, null, itp.)
   const parseDays = (val) => {
     const n = Number(val);
-    if (Number.isFinite(n)) return n;
-    return 9999; // traktuj jako daleko w przyszłości
+    return Number.isFinite(n) ? n : 9999;
   };
 
-  // logika kolorów i textual label dla termometru - używa znormalizowanych pól
   const thermometerColor = (order) => {
     if (!order) return "#28a745";
-
     if (order.statusNormalized === "Zrealizowane") return "#28a745";
 
     const days = parseDays(order.time_diff_num);
-    if (days === null) return "#6c757d";
-
-    if (days < 0) return "#dc3545";    // po terminie
-    if (days <= 3) return "#dc3545";   // 0-3 dni
-    if (days <= 7) return "#ffc107";   // 4-7 dni
-    return "#28a745";                  // więcej niż 7 dni
+    if (days < 0) return "#dc3545";
+    if (days <= 3) return "#dc3545";
+    if (days <= 7) return "#ffc107";
+    return "#28a745";
   };
 
-  // aktualizuj status zamówienia (zgodnie z template index.html backend expects POST to update_status url)
+  // ----------------------------------------------
+  // UPDATE ORDER STATUS
+  // ----------------------------------------------
   const updateOrderStatus = async (orderId, newStatus) => {
     const token = localStorage.getItem("token");
     try {
       if (token) {
-        // jeśli używamy JWT -> wysyłamy JSON z Authorization
-        const res = await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
+        await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -279,108 +265,86 @@ export default function OrdersPage() {
           },
           body: JSON.stringify({ status: newStatus }),
         });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || res.status);
-        }
       } else {
-        // sesja + CSRF -> FormData + credentials
         const csrftoken = getCookie("csrftoken");
         const form = new FormData();
         form.append("status", newStatus);
-        const res = await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
+
+        await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
           method: "POST",
           credentials: "include",
           headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
           body: form,
         });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || res.status);
-        }
       }
-      // odśwież listę zamówień
-      loadOrders();
+      setReloadFlag(prev => !prev);
     } catch (err) {
-      console.error("Błąd update status:", err);
-      alert("Błąd aktualizacji statusu: " + (err.message || err));
-      // odśwież dane lokalnie jeżeli potrzebne
-      loadOrders();
+      alert("Błąd aktualizacji statusu");
     }
   };
 
+  // ----------------------------------------------
+  // ADD COMMENT
+  // ----------------------------------------------
   const handleAddComment = async () => {
     if (!selectedOrder) return;
 
-    // NIE USUWAMY SPACJI — tylko blokujemy pusty komentarz
-    const textValue = comment || "";
-    if (textValue.replace(/\s/g, "") === "") {
+    if (comment.replace(/\s/g, "") === "") {
       alert("Komentarz nie może być pusty");
       return;
     }
 
     try {
       const token = localStorage.getItem("token");
-      const jsonPayload = {
-        text: textValue,
-        comment: textValue,
-        tresc: textValue,
-      };
 
       if (token) {
-        const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
+        await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(jsonPayload),
+          body: JSON.stringify({ text: comment }),
         });
-        if (!res.ok) {
-          const text = await res.text();
-          let parsed;
-          try { parsed = JSON.parse(text); } catch { parsed = text; }
-          throw new Error((parsed && parsed.error) ? parsed.error : text || res.status);
-        }
       } else {
         const csrftoken = getCookie("csrftoken");
         const form = new FormData();
-        form.append("text", textValue);
-        form.append("comment", textValue);
-        form.append("tresc", textValue);
+        form.append("text", comment);
 
-        const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
+        await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
           method: "POST",
           credentials: "include",
           headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
           body: form,
         });
-        if (!res.ok) {
-          const text = await res.text();
-          let parsed;
-          try { parsed = JSON.parse(text); } catch { parsed = text; }
-          throw new Error((parsed && parsed.error) ? parsed.error : text || res.status);
-        }
       }
 
-      // po udanym dodaniu pobierz ponownie komentarze i zaktualizuj licznik
       await fetchComments(selectedOrder.id);
-
       setComment("");
-      alert("Komentarz został dodany!");
+
     } catch (err) {
-      console.error("Błąd podczas dodawania komentarza:", err);
-      alert("Wystąpił błąd podczas dodawania komentarza: " + (err.message || err));
+      alert("Błąd podczas dodawania komentarza");
     }
   };
 
+  // ----------------------------------------------
+  // SEARCH FILTER
+  // ----------------------------------------------
   const filteredOrders = orders.filter(
     (order) =>
-      (order.numer || "").toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (order.osoba || "").toString().toLowerCase().includes(searchTerm.toLowerCase())
+      (order.numer || "")
+        .toString()
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (order.osoba || "")
+        .toString()
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
   );
 
-  // jeśli wybrany szczegół zamówienia -> wyświetl stronę szczegółów
+  // ----------------------------------------------
+  // DETAIL VIEW
+  // ----------------------------------------------
   if (selectedOrderDetail) {
     return (
       <OrderDetailPage
@@ -393,29 +357,14 @@ export default function OrdersPage() {
   if (loading) return <div>Ładowanie...</div>;
   if (!orders.length) return <div>Brak zamówień.</div>;
 
+  // ----------------------------------------------
+  // RENDER PAGE
+  // ----------------------------------------------
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        marginTop: "52px",
-      }}
-    >
-      <h2
-        className="text-center"
-        style={{ color: "#111", marginBottom: "24px" }}
-      >
-        Tabela Zamówień
-      </h2>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 52 }}>
+      <h2 style={{ color: "#111", marginBottom: 24 }}>Tabela Zamówień</h2>
 
-      {/* Okienko wyszukiwania */}
-      <div
-        style={{
-          width: "90%",
-          marginBottom: "20px",
-        }}
-      >
+      <div style={{ width: "90%", marginBottom: 20 }}>
         <input
           type="text"
           placeholder="Wyszukaj zamówienie po numerze lub osobie..."
@@ -423,41 +372,30 @@ export default function OrdersPage() {
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{
             width: "100%",
-            padding: "10px",
+            padding: 10,
             border: "1px solid #ccc",
-            borderRadius: "8px",
+            borderRadius: 8,
             backgroundColor: "#fff",
             color: "#111",
           }}
         />
       </div>
 
-      {/* Tabela zamówień */}
-      <div
-        style={{
-          width: "100%",
-          overflowX: "auto",
-          marginBottom: "32px",
-        }}
-      >
+      <div style={{ width: "100%", overflowX: "auto", marginBottom: 32 }}>
         <table
           className="orders-table table text-dark"
-          style={{
-            minWidth: "900px",
-            width: "fit-content",
-            margin: "0 auto",
-          }}
+          style={{ minWidth: 900, width: "fit-content", margin: "0 auto" }}
         >
           <thead>
             <tr>
               <th onClick={() => handleSort("numer")} style={{ cursor: "pointer" }}>
-                Numer Zamówienia {getSortIndicator("numer")}
+                Numer {getSortIndicator("numer")}
               </th>
               <th onClick={() => handleSort("osoba")} style={{ cursor: "pointer" }}>
                 Osoba {getSortIndicator("osoba")}
               </th>
               <th onClick={() => handleSort("cena")} style={{ cursor: "pointer" }}>
-                Wartość Zamówienia {getSortIndicator("cena")}
+                Wartość {getSortIndicator("cena")}
               </th>
               <th onClick={() => handleSort("data_zamowienia")} style={{ cursor: "pointer" }}>
                 Data zamówienia {getSortIndicator("data_zamowienia")}
@@ -472,106 +410,104 @@ export default function OrdersPage() {
               <th>Dodaj Komentarz</th>
             </tr>
           </thead>
+
           <tbody>
-            {filteredOrders.map((order) => {
-              return (
-                <tr 
-                  key={order.id}
-                  onClick={() => setSelectedOrderDetail(order)}
-                  style={{ cursor: "pointer", transition: "background-color 0.2s" }}
-                  onMouseEnter={(ev) => ev.currentTarget.style.backgroundColor = "#f0f0f0"}
-                  onMouseLeave={(ev) => ev.currentTarget.style.backgroundColor = ""}
-                >
-                  <td>{order.numer || order.id}</td>
-                  <td>{order.osoba || "Brak"}</td>
-                  <td>{order.cena}</td>
-                  <td>{order.data_zamowienia}</td>
+            {filteredOrders.map((order) => (
+              <tr
+                key={order.id}
+                onClick={() => setSelectedOrderDetail(order)}
+                style={{ cursor: "pointer", transition: "background-color 0.2s" }}
+                onMouseEnter={(ev) => (ev.currentTarget.style.backgroundColor = "#f0f0f0")}
+                onMouseLeave={(ev) => (ev.currentTarget.style.backgroundColor = "")}
+              >
+                <td>{order.numer}</td>
+                <td>{order.osoba || "Brak"}</td>
+                <td>{order.cena}</td>
+                <td>{order.data_zamowienia}</td>
 
-                  <td>{order.comments_count ?? 0}</td>
+                <td>{order.comments_count ?? 0}</td>
 
-                  <td style={{
+                <td
+                  style={{
                     textAlign: "center",
-                    backgroundColor: thermometerColor(order),   // ⬅️ TERAZ KOLOR W TYM MIEJSCU
+                    backgroundColor: thermometerColor(order),
                     color: "#fff",
                     fontWeight: "bold",
                     borderRadius: 4,
-                    }}>
-                    <span>
-                      {order.deadlineValue}
-                    </span>
-                  </td>
+                  }}
+                >
+                  {order.deadlineValue}
+                </td>
 
-                  <td onClick={(ev) => ev.stopPropagation()}>
-                    <select
-                      value={order.statusNormalized || "Brak"}
-                      className="form-select"
-                      onChange={(e) => {
-                        const newStatus = e.target.value;
-                        if (window.confirm("Czy na pewno chcesz zastosować zmiany?")) {
-                          updateOrderStatus(order.id, newStatus);
-                        } else {
-                          loadOrders();
-                        }
-                      }}
-                      style={{
-                        width: "90%",
-                        padding: "10px",
-                        border: "1px solid #ccc",
-                        borderRadius: "8px",
-                        backgroundColor: "#fff",
-                        color: "#111",
-                      }}
-                    >
-                      <option value="Brak" hidden>
-                        Brak
-                      </option>
-                      <option value="Oczekiwanie">Oczekiwanie</option>
-                      <option value="W trakcie">W trakcie</option>
-                      <option value="Zrealizowane">Zrealizowane</option>
-                    </select>
-                  </td>
-                  <td onClick={(ev) => ev.stopPropagation()}>
-                    <button
-                      //className="btn btn-primary btn-sm"
-                      className="btn report-btn"
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        fetchComments(order.id);
-                        setShowModal(true);
-                      }}
-                    >
-                      Dodaj Komentarz
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                <td onClick={(ev) => ev.stopPropagation()}>
+                  <select
+                    value={order.statusNormalized}
+                    onChange={(e) => {
+                      if (window.confirm("Czy na pewno chcesz zastosować zmiany?")) {
+                        updateOrderStatus(order.id, e.target.value);
+                      } else {
+                        // zamiast loadOrders();
+                        setReloadFlag(prev => !prev);
+                      }
+                    }}
+                    style={{
+                      width: "90%",
+                      padding: "10px",
+                      border: "1px solid #ccc",
+                      borderRadius: "8px",
+                      backgroundColor: "#fff",
+                      color: "#111",
+                    }}
+                  >
+                    <option value="Brak" hidden>Brak</option>
+                    <option value="Oczekiwanie">Oczekiwanie</option>
+                    <option value="W trakcie">W trakcie</option>
+                    <option value="Zrealizowane">Zrealizowane</option>
+                  </select>
+                </td>
+
+                <td onClick={(ev) => ev.stopPropagation()}>
+                  <button
+                    className="btn report-btn"
+                    onClick={() => {
+                      setSelectedOrder(order);
+                      fetchComments(order.id);
+                      setShowModal(true);
+                    }}
+                  >
+                    Dodaj Komentarz
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "20px", gap: "10px" }}>
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-              className="btn report-btn"
-            >
+
+        {/* PAGINATION */}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: 20, gap: 10 }}>
+          <button
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+            className="btn report-btn"
+          >
             ◀ Poprzednia
-            </button>
+          </button>
 
-            <span style={{ fontWeight: "bold", color:"black" }}>
-              Strona {page} / {Math.ceil(totalCount / pageSize)}
-            </span>
+          <span style={{ fontWeight: "bold", color: "black" }}>
+            Strona {page} / {Math.ceil(totalCount / pageSize)}
+          </span>
 
-            <button
-              disabled={page >= Math.ceil(totalCount / pageSize)}
-              onClick={() => setPage(page + 1)}
-              className="btn report-btn"
-            >
+          <button
+            disabled={page >= Math.ceil(totalCount / pageSize)}
+            onClick={() => setPage(page + 1)}
+            className="btn report-btn"
+          >
             Następna ▶
-            </button>
-          </div>
+          </button>
+        </div>
       </div>
 
-      {/* Modal komentarzy (wg comments.html) */}
+      {/* COMMENT MODAL */}
       {showModal && selectedOrder && (
         <div
           style={{
@@ -592,32 +528,31 @@ export default function OrdersPage() {
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: "white",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "600px",
+              padding: 20,
+              borderRadius: 8,
+              width: 600,
               maxHeight: "80vh",
               overflowY: "auto",
               boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
             }}
           >
-            <h3 style={{ marginBottom: "10px", textAlign: "center", color: "#111" }}>
+            <h3 style={{ marginBottom: 10, textAlign: "center", color: "#111" }}>
               Komentarze dla zamówienia: <strong>{selectedOrder.numer}</strong>
             </h3>
 
-            {/* lista komentarzy */}
             <div style={{ marginBottom: 12 }}>
               {commentsLoading ? (
                 <div>Ładowanie komentarzy...</div>
               ) : commentsList.length ? (
                 <ul style={{ paddingLeft: 16 }}>
                   {commentsList.map((c) => (
-                    <li key={c.id ?? `${c.date}-${c.text}` } style={{ marginBottom: 8 }}>
+                    <li key={c.id ?? Math.random()} style={{ marginBottom: 8 }}>
                       <div style={{ fontSize: "1rem", color: "#111", whiteSpace: "pre-wrap" }}>
                         {c.text ?? c.comment ?? ""}
                       </div>
                       <small style={{ color: "#444" }}>
                         {c.date ?? c.created_at ?? ""}
-                      </small> 
+                      </small>
                     </li>
                   ))}
                 </ul>
@@ -626,37 +561,23 @@ export default function OrdersPage() {
               )}
             </div>
 
-            {/* formularz dodania komentarza (wg comments.html) */}
-            <div style={{ marginTop: 8 }}>
-              <div className="form-group" style={{ marginBottom: 8 }}>
-                <label style={{ display: "block", marginBottom: 6, color: "black" }}>Dodaj komentarz</label>
-                <textarea
-                  className="form-control"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  rows={4}
-                  //style={{ width: "100%", padding: 8, borderRadius: 4 }}
-                  style={{
-                    width: "90%",
-                    padding: "10px",
-                    border: "1px solid #ccc",
-                    borderRadius: "8px",
-                    backgroundColor: "#fff",
-                    color: "#111",
+            <div>
+              <textarea
+                className="form-control"
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={4}
+                style={{
+                  width: "90%",
+                  padding: "10px",
+                  border: "1px solid #ccc",
+                  borderRadius: "8px",
+                  backgroundColor: "#fff",
+                  color: "#111",
                 }}
-                />
-              </div>
-              {/* <div className="form-group" style={{ marginBottom: 12 }}>
-                <label style={{ display: "block", marginBottom: 6 }}>Deadline (opcjonalnie)</label>
-                <input
-                  type="date"
-                  className="form-control"
-                  value={commentDeadline}
-                  onChange={(e) => setCommentDeadline(e.target.value)}
-                  style={{ padding: 8, borderRadius: 4, width: "100%" }}
-                />
-              </div> */}
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+              />
+
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10 }}>
                 <button onClick={handleAddComment} className="btn report-btn" style={{ width: "48%" }}>
                   Dodaj
                 </button>
@@ -667,7 +588,7 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
-      )};
+      )}
     </div>
   );
 }

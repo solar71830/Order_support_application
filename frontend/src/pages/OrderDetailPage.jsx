@@ -258,7 +258,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
             <strong>Status:</strong> {order.status || "Brak"}
           </div>
           <div>
-            <strong>Data potwierdzenia:</strong> {order.data_oczekiwana || "Brak"}
+            <strong>Data potwierdzenia:</strong> {order.data_zamowienia || "Brak"}
           </div>
           <div>
             <strong>Deadline:</strong> {order.data_potwierdzona || "Brak"}

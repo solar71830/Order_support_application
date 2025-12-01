@@ -165,7 +165,12 @@ export default function ReportsPage() {
                 employee.name.toLowerCase().includes(employeeSearch.toLowerCase())
               )
               .map((employee, index) => (
-                <label key={index} style={{ display: "block", marginBottom: "5px", color: "#111" }}>
+                <label key={index} style={{ display: "block", marginBottom: "5px", width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",}}>
                   <input
                     type="checkbox"
                     value={employee.name}
@@ -184,7 +189,7 @@ export default function ReportsPage() {
           </div>
           <h3 style={{ color: "white" }}>Okres:</h3>
           <div style={{ marginBottom: "10px" }}>
-            <label style={{ color: "white" }}>
+            <label style={{ color: "black" }}>
               Data początkowa:
               <input
                 type="date"
@@ -197,6 +202,9 @@ export default function ReportsPage() {
                   border: "1px solid #ccc",
                   borderRadius: "4px",
                   padding: "5px",
+                  WebkitAppearance: "none",
+                  MozAppearance: "none",
+                  appearance: "none",
                 }}
               />
             </label>
@@ -215,6 +223,9 @@ export default function ReportsPage() {
                   border: "1px solid #ccc",
                   borderRadius: "4px",
                   padding: "5px",
+                  WebkitAppearance: "none",
+                  MozAppearance: "none",
+                  appearance: "none",
                 }}
               />
             </label>
@@ -259,7 +270,12 @@ export default function ReportsPage() {
                 (order.numer || "").toString().toLowerCase().includes(orderSearch.toLowerCase())
               )
               .map((order, index) => (
-                <label key={index} style={{ display: "block", marginBottom: "5px", color: "#111" }}>
+                <label key={index} style={{ display: "block", marginBottom: "5px", width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",}}>
                   <input
                     type="checkbox"
                     value={order.numer}
