@@ -28,7 +28,16 @@ export default function DeleteUser({ token, users }) {
     return (
         <form onSubmit={handleSubmit} className="user-form">
             <h2>Usuwanie użytkownika</h2>
-            <select value={username} onChange={e => setUsername(e.target.value)} required>
+            <select value={username} onChange={e => setUsername(e.target.value)}
+            style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
+                 required>
                 <option value="">Wybierz użytkownika</option>
                 {users.map(u => <option key={u} value={u}>{u}</option>)}
             </select>

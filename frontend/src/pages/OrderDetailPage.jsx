@@ -182,13 +182,6 @@ export default function OrderDetailPage({ orderId, onBack }) {
         <button
           onClick={onBack}
           className="btn report-btn"
-          // style={{
-          //   border: "none",
-          //   padding: "10px 20px",
-          //   borderRadius: "8px",
-          //   cursor: "pointer",
-          //   marginBottom: "20px",
-          // }}
         >
           ← Powrót do listy zamówień
         </button>
@@ -342,7 +335,15 @@ export default function OrderDetailPage({ orderId, onBack }) {
                   borderBottom: "1px solid #eee",
                 }}
               >
-                <div style={{ color: "#111", fontWeight: "bold" }}>{c.text ?? c.comment ?? ""}</div>
+                <div
+                  style={{
+                    color: "#111",
+                    fontWeight: "bold",
+                    whiteSpace: "pre-line",   // <-- DODAĆ TO
+                  }}
+                >
+                {c.text ?? c.comment ?? ""}
+                </div>
                 <small style={{ color: "#666" }}>
                   {c.date ?? c.created_at ?? ""}
                 </small>
@@ -388,23 +389,6 @@ export default function OrderDetailPage({ orderId, onBack }) {
             }}
           />
         </div>
-        {/* <div style={{ marginBottom: "10px" }}>
-          <label style={{ display: "block", marginBottom: "5px", color: "#111", fontWeight: "bold" }}>
-            Deadline (opcjonalnie)
-          </label>
-          <input
-            type="date"
-            value={commentDeadline}
-            onChange={(e) => setCommentDeadline(e.target.value)}
-            style={{
-              padding: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              backgroundColor: "#fff",
-              color: "#111",
-            }}
-          />
-        </div> */}
         <button
           onClick={handleAddComment}
           style={{

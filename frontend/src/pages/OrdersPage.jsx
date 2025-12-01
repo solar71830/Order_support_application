@@ -23,6 +23,7 @@ export default function OrdersPage() {
   }, [page]);
 
 
+  // Liczenie dni do deadline
   const daysUntilDeadline = (o) => {
     if (!o || !o.data_oczekiwana) return null;
 
@@ -66,23 +67,6 @@ export default function OrdersPage() {
     } else if (status === "Zrealizowane") {
       status = "Zrealizowane";
     }
-    // jeżeli jest data zamknięcia → ustaw Zrealizowane
-    // if (o.data_zamkniecia != 'NULL' ) {
-    //   status = "Zrealizowane";
-    // }
-
-    // --- LICZENIE DNI ---
-    // const parseDate = (d) => (d ? new Date(d) : null);
-
-    // const d1 = parseDate(o.data_zamowienia);
-    // const d2 = parseDate(o.data_potwierdzona);
-
-    // let timeDiff = null;
-
-    // if (d1 && d2) {
-    //   const ms = d2 - d1;
-    //   timeDiff = Math.round(ms / (1000 * 60 * 60 * 24));
-    // }
 
     const timeDiff = daysUntilDeadline(o);
 
@@ -502,56 +486,8 @@ export default function OrdersPage() {
                   <td>{order.osoba || "Brak"}</td>
                   <td>{order.cena}</td>
                   <td>{order.data_zamowienia}</td>
-                      {/* <div
-                        className="progress"
-                        style={{
-                          height: 25,
-                          backgroundColor: "#f0f0f0",      // ⬅️ neutralne tło zamiast thermometerColor
-                          position: "relative",
-                          minWidth: "160px",
-                          whiteSpace: "nowrap",
-                          display: "flex",
-                          alignItems: "center",
-                          borderRadius: 4,
-                        }}
-                      > 
-                      <div
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: 8,
-                          backgroundColor: "#999",        // ⬅️ neutralny pasek zamiast kolorowego
-                          borderRadius: "4px 0 0 4px",
-                          zIndex: 2,
-                        }}
-                      />
-                      <span
-                        className="data-label"
-                        style={{
-                          position: "absolute",
-                          left: "50%",
-                          transform: "translateX(-50%)",
-                          color: "#333",
-                          fontWeight: "bold",
-                          whiteSpace: "nowrap",
-                          }}
-                        >
-                        {order.data_zamowienia  ?? "Brak"}
-                      </span>
-                    </div>
-                  </td> */}
 
                   <td>{order.comments_count ?? 0}</td>
-                  {/* <td style={{ textAlign: "center" }}>
-                    <span style={{
-                      color: order.is_overdue_bool ? "red" : "#111",
-                      fontWeight: order.is_overdue_bool ? "700" : "400",
-                    }}>
-                      {order.deadlineValue}
-                    </span>
-                  </td> */}
 
                   <td style={{
                     textAlign: "center",
@@ -576,6 +512,14 @@ export default function OrdersPage() {
                         } else {
                           loadOrders();
                         }
+                      }}
+                      style={{
+                        width: "90%",
+                        padding: "10px",
+                        border: "1px solid #ccc",
+                        borderRadius: "8px",
+                        backgroundColor: "#fff",
+                        color: "#111",
                       }}
                     >
                       <option value="Brak" hidden>
@@ -691,7 +635,15 @@ export default function OrdersPage() {
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
                   rows={4}
-                  style={{ width: "100%", padding: 8, borderRadius: 4 }}
+                  //style={{ width: "100%", padding: 8, borderRadius: 4 }}
+                  style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
                 />
               </div>
               {/* <div className="form-group" style={{ marginBottom: 12 }}>

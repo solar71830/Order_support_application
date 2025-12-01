@@ -63,15 +63,6 @@ export default function NewsPage() {
       {/* Przycisk do wyświetlenia formularza dodania nowej aktualności (dostępny dla wszystkich) */}
       <button
         onClick={() => setShowAddForm(!showAddForm)}
-        // style={{
-        //   backgroundColor: "#38b6ff",
-        //   color: "#fff",
-        //   border: "none",
-        //   padding: "10px 20px",
-        //   borderRadius: "8px",
-        //   cursor: "pointer",
-        //   marginBottom: "20px",
-        // }}
         className="btn report-btn"
           style={{ marginBottom: "10px" }}
       >
