@@ -84,8 +84,9 @@ def index(request):
     return render(request, 'index.html', {'zamowienia': zamowienia_data, 'unique_people': unique_people})
 
 @csrf_exempt
-#@jwt_required
+@jwt_required
 def update_status(request, zamowienie_id):
+    print("request update ",request)
     if request.method == 'POST':
         zamowienie = get_object_or_404(Zlecenia, id=zamowienie_id)
         new_status = request.POST.get('status')

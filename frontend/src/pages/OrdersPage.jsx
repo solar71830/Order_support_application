@@ -289,14 +289,17 @@ export default function OrdersPage({token}) {
     //const token = localStorage.getItem("token");
     try {
       if (token) {
+        const formUpdateData = new URLSearchParams();
+      formUpdateData.append("status", newStatus);
+        
         // jeśli używamy JWT -> wysyłamy JSON z Authorization
         const res = await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+           "Content-Type": "application/x-www-form-urlencoded",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ status: newStatus }),
+          body: formUpdateData.toString()
         });
         if (!res.ok) {
           const text = await res.text();
