@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import "../App.css";
 
-export default function OrderDetailPage({ orderId, onBack }) {
+export default function OrderDetailPage({ orderId, onBack, token }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [orderDetails, setOrderDetails] = useState([]);
@@ -19,8 +19,10 @@ export default function OrderDetailPage({ orderId, onBack }) {
     setLoading(true);
     setError("");
     try {
+      //const tokentemp = localStorage.getItem("jwtToken");
+      //console.log("tokentemp", tokentemp)
       // Pobierz listę wszystkich zamówień i znajdź to o danym ID
-      const ordersRes = await fetch(`http://127.0.0.1:8000/api/orders/`);
+      const ordersRes = await fetch(`http://127.0.0.1:8000/api/orders/`, {headers: {Authorization: `Bearer ${token}` },});
       if (!ordersRes.ok) {
         throw new Error(`Błąd pobierania zamówień: ${ordersRes.status}`);
       }
@@ -38,7 +40,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
 
       // Pobierz szczegóły zamówienia
       try {
-        const detailsRes = await fetch(`http://127.0.0.1:8000/api/order/${orderId}/`);
+        const detailsRes = await fetch(`http://127.0.0.1:8000/api/order/${orderId}/`,{headers: {Authorization: `Bearer ${token}` },});
         if (detailsRes.ok) {
           const detailsData = await detailsRes.json();
           // Stwórz tablicę z jednym elementem (towar)
@@ -75,7 +77,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
   const fetchComments = async (id = orderId) => {
     setCommentsLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8000/comments/${id}/`);
+      const res = await fetch(`http://127.0.0.1:8000/comments/${id}/`,{headers: {Authorization: `Bearer ${token}` },});
       if (!res.ok) {
         console.warn("Błąd pobierania komentarzy:", res.status);
         setComments([]);
@@ -113,7 +115,9 @@ export default function OrderDetailPage({ orderId, onBack }) {
     }
 
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("jwtToken");
+      console.log("to je token", token)
+      
       const textValue = newComment.trim();
 
       // przygotuj payload z kilkoma wariantami nazw pola (kompatybilność)
@@ -143,7 +147,7 @@ export default function OrderDetailPage({ orderId, onBack }) {
         res = await fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
           method: "POST",
           credentials: "include",
-          headers: csrftoken ? { "X-CSRFToken": csrftoken } : {},
+          headers: {Authorization: `Bearer ${token}` },
           body: form,
         });
       }

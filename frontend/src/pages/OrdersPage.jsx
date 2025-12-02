@@ -410,6 +410,7 @@ export default function OrdersPage({token}) {
       <OrderDetailPage
         orderId={selectedOrderDetail.id}
         onBack={() => setSelectedOrderDetail(null)}
+        token = {token}
       />
     );
   }

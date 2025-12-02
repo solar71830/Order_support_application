@@ -99,7 +99,6 @@ def update_status(request, zamowienie_id):
 @csrf_exempt
 @jwt_required
 def comments(request, zamowienie_id):
-    print(request, "to jest request")
     zamowienie = get_object_or_404(Zlecenia, id=zamowienie_id)
     if request.method == 'POST':
         text = request.POST.get('comment')
@@ -121,6 +120,7 @@ def comments(request, zamowienie_id):
     return JsonResponse({"error": "Nieprawidłowa metoda HTTP!"}, status=405)
 
 @csrf_exempt
+@jwt_required
 def orders_api(request):
     page = int(request.GET.get("page", 1))
     page_size = int(request.GET.get("page_size", 100))

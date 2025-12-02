@@ -19,7 +19,8 @@ export default function ReportsPage() {
 
   // Pobieranie danych z backendu
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/orders/")
+    const token = localStorage.getItem("jwtToken")
+    fetch("http://127.0.0.1:8000/api/orders/",{headers: {Authorization: `Bearer ${token}` },})
       .then((res) => res.json())
       .then((data) => {
 
