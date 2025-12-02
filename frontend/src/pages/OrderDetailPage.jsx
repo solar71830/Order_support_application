@@ -19,6 +19,7 @@ export default function OrderDetailPage({ orderId, onBack, token }) {
     setLoading(true);
     setError("");
     try {
+      // token ma nazwę jwtToken w plikach jak coś
       //const tokentemp = localStorage.getItem("jwtToken");
       //console.log("tokentemp", tokentemp)
       // Pobierz listę wszystkich zamówień i znajdź to o danym ID
@@ -115,8 +116,7 @@ export default function OrderDetailPage({ orderId, onBack, token }) {
     }
 
     try {
-      const token = localStorage.getItem("jwtToken");
-      console.log("to je token", token)
+      //const token = localStorage.getItem("jwtToken");
       
       const textValue = newComment.trim();
 
@@ -126,29 +126,31 @@ export default function OrderDetailPage({ orderId, onBack, token }) {
         comment: textValue,
         tresc: textValue,
       };
-
+      
+      const formData2 = new URLSearchParams();
+        formData2.append("text", textValue);
+        formData2.append("comment", textValue);
+        formData2.append("tresc", textValue);
       let res;
       if (token) {
+        
         res = await fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(jsonPayload),
+          body: formData2.toString(),
         });
       } else {
-        const csrftoken = getCookie("csrftoken");
-        const form = new FormData();
-        form.append("text", textValue);
-        form.append("comment", textValue);
-        form.append("tresc", textValue);
+        //const csrftoken = getCookie("csrftoken");
+        
 
         res = await fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
           method: "POST",
           credentials: "include",
-          headers: {Authorization: `Bearer ${token}` },
-          body: form,
+          headers: {"Content-Type": "application/x-www-form-urlencoded",Authorization: `Bearer ${token}` },
+          body: formData2.toString(),
         });
       }
 

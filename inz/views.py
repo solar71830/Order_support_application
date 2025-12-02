@@ -137,6 +137,7 @@ def orders_api(request):
     })
 
 @csrf_exempt
+@jwt_required
 def order_detail(request, zamowienie_id):
     """Zwraca szczegóły zamówienia w formacie JSON"""
     zamowienie = get_object_or_404(Zlecenia, id=zamowienie_id)
