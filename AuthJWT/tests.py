@@ -73,6 +73,12 @@ def test_login(client):
     print("\nDelete", user_delete_message)
     assert user_delete_message.status_code == 200
 
+    logout_message2 = client.post("/logout/", headers={
+        "Authorization": f"Bearer {token2}"
+    },)
+    print("\nLogout", logout_message2)
+    assert logout_message2.status_code == 200
+
 
 
     
