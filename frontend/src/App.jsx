@@ -104,7 +104,6 @@ function App() {
     } else if (userInfo) {
         if (userInfo.role === "admin") {
             if (active === "orders") page = <OrdersPage orders={orders} token={token}/>;
-            if (active === "work") page = <WorkPage />;
             if (active === "news") page = <NewsPage />;
             if (active === "reports") page = <ReportsPage />;
             if (active === "account") page = <AccountInfo token={token} username_new={username_new}/>;
@@ -112,7 +111,6 @@ function App() {
         } else {
             if (active === "account") page = <AccountInfo token={token} username_new={username_new}/>;
             if (active === "orders") page = <OrdersPage orders={orders} />;
-            if (active === "work") page = <WorkPage />;
             if (active === "news") page = <NewsPage />;
             if (active === "reports") page = <ReportsPage />;
         }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import OrderDetailPage from "./OrderDetailPage";
 import "../App.css";
 
-export default function OrdersPage({token}) {
+export default function OrdersPage({ token }) {
   const [page, setPage] = useState(1);
   const pageSize = 100;
 
@@ -21,17 +21,13 @@ export default function OrdersPage({token}) {
 
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [reloadFlag, setReloadFlag] = useState(false);
+  
 
-  // ----------------------------------------------
-  // LOAD ORDERS WHEN PAGE CHANGES
-  // ----------------------------------------------
+  // LOAD ORDERS
   useEffect(() => {
     loadOrders();
   }, [page, reloadFlag]);
 
-  // ----------------------------------------------
-  // CALCULATE DAYS UNTIL DEADLINE
-  // ----------------------------------------------
   const daysUntilDeadline = (o) => {
     if (!o || !o.data_oczekiwana) return null;
     const today = new Date();
@@ -43,9 +39,6 @@ export default function OrdersPage({token}) {
     return Math.round((deadline - today) / (1000 * 60 * 60 * 24));
   };
 
-  // ----------------------------------------------
-  // NORMALIZE ORDER
-  // ----------------------------------------------
   const normalizeOrder = (o) => {
     if (!o) return {};
 
@@ -84,13 +77,13 @@ export default function OrdersPage({token}) {
     };
   };
 
-  // ----------------------------------------------
-  // LOAD ORDERS WITH FIXED PAGINATION LOGIC
-  // ----------------------------------------------
   const loadOrders = () => {
     setLoading(true);
 
-    fetch(`http://127.0.0.1:8000/api/orders/?page=${page}&page_size=${pageSize}`,{headers:{  Authorization: `Bearer ${token}`}})
+    fetch(
+      `http://127.0.0.1:8000/api/orders/?page=${page}&page_size=${pageSize}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
       .then((res) => res.json())
       .then((data) => {
         const results = data.results || (Array.isArray(data) ? data : []);
@@ -98,26 +91,19 @@ export default function OrdersPage({token}) {
 
         setOrders(normalized);
 
-        // -------------- FIXED PAGINATION LOGIC ----------------
         if (typeof data.count === "number") {
-          // BACKEND MA PAGINACJĘ — DRF
           setTotalCount(data.count);
         } else if (data.next || data.previous) {
-          // Backend ma paginację, ale nie zwraca count
-          // Szacujemy liczbę rekordów
           setTotalCount(page * pageSize + results.length);
         } else {
-          // Backend NIE ma paginacji — zwraca całą listę
           setTotalCount(results.length);
         }
-        // ------------------------------------------------------
 
-        // Load comment counts for each order
         Promise.allSettled(
-          
           normalized.map((o) =>
-            fetch(`http://127.0.0.1:8000/comments/${o.id}/`,{headers:{  Authorization: `Bearer ${token}`}})
-          
+            fetch(`http://127.0.0.1:8000/comments/${o.id}/`, {
+              headers: { Authorization: `Bearer ${token}` },
+            })
               .then((r) => r.json().catch(() => []))
               .then((arr) => ({
                 id: o.id,
@@ -134,7 +120,11 @@ export default function OrdersPage({token}) {
             prev.map((o) => {
               const found = counts.find((c) => c.id === o.id);
               return found
-                ? { ...o, comments_count: found.count, comments_count_num: found.count }
+                ? {
+                    ...o,
+                    comments_count: found.count,
+                    comments_count_num: found.count,
+                  }
                 : o;
             })
           );
@@ -147,20 +137,18 @@ export default function OrdersPage({token}) {
       .finally(() => setLoading(false));
   };
 
-  // ----------------------------------------------
-  // GET COOKIE
-  // ----------------------------------------------
   const getCookie = (name) => {
-    const match = document.cookie.match(new RegExp("(^|; )" + name + "=([^;]*)"));
+    const match = document.cookie.match(
+      new RegExp("(^|; )" + name + "=([^;]*)")
+    );
     return match ? decodeURIComponent(match[2]) : null;
   };
 
-  // ----------------------------------------------
-  // FETCH COMMENTS
-  // ----------------------------------------------
   const fetchComments = (orderId) => {
     setCommentsLoading(true);
-    return fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {headers:{  Authorization: `Bearer ${token}`}})
+    return fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then(async (res) => {
         if (!res.ok) return [];
         return res.json().catch(() => []);
@@ -177,7 +165,11 @@ export default function OrdersPage({token}) {
         setOrders((prev) =>
           prev.map((o) =>
             o.id === orderId
-              ? { ...o, comments_count: list.length, comments_count_num: list.length }
+              ? {
+                  ...o,
+                  comments_count: list.length,
+                  comments_count_num: list.length,
+                }
               : o
           )
         );
@@ -191,9 +183,6 @@ export default function OrdersPage({token}) {
       .finally(() => setCommentsLoading(false));
   };
 
-  // ----------------------------------------------
-  // SORTING
-  // ----------------------------------------------
   const handleSort = (key) => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -205,11 +194,15 @@ export default function OrdersPage({token}) {
       let va = a[key];
       let vb = b[key];
 
-      const isDateA = typeof va === "string" && /^\d{4}-\d{2}-\d{2}$/.test(va);
-      const isDateB = typeof vb === "string" && /^\d{4}-\d{2}-\d{2}$/.test(vb);
+      const isDateA =
+        typeof va === "string" && /^\d{4}-\d{2}-\d{2}$/.test(va);
+      const isDateB =
+        typeof vb === "string" && /^\d{4}-\d{2}-\d{2}$/.test(vb);
 
       if (isDateA && isDateB) {
-        return direction === "asc" ? new Date(va) - new Date(vb) : new Date(vb) - new Date(va);
+        return direction === "asc"
+          ? new Date(va) - new Date(vb)
+          : new Date(vb) - new Date(va);
       }
 
       const na = parseFloat(va);
@@ -252,42 +245,28 @@ export default function OrdersPage({token}) {
     return "#28a745";
   };
 
-  // ----------------------------------------------
   // UPDATE ORDER STATUS
-  // ----------------------------------------------
   const updateOrderStatus = async (orderId, newStatus) => {
-    //const token = localStorage.getItem("token");
     try {
-      if (token) {
-        await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
-          method: "POST",
-          headers: {
-           "Content-Type": "application/x-www-form-urlencoded",
-            Authorization: `Bearer ${token}`,
-          },
-          body: formUpdateData.toString()
-        });
-      } else {
-        const csrftoken = getCookie("csrftoken");
-        const form = new FormData();
-        form.append("status", newStatus);
+      const formUpdateData = new URLSearchParams();
+      formUpdateData.append("status", newStatus);
 
-        await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
-          method: "POST",
-          credentials: "include",
-          headers: csrftoken ? { "X-CSRFToken": csrftoken, Authorization: `Bearer ${token}`, } : {},
-          body: form,
-        });
-      }
-      setReloadFlag(prev => !prev);
+      await fetch(`http://127.0.0.1:8000/update_status/${orderId}/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${token}`,
+        },
+        body: formUpdateData.toString(),
+      });
+
+      setReloadFlag((prev) => !prev);
     } catch (err) {
       alert("Błąd aktualizacji statusu");
     }
   };
 
-  // ----------------------------------------------
   // ADD COMMENT
-  // ----------------------------------------------
   const handleAddComment = async () => {
     if (!selectedOrder) return;
 
@@ -297,54 +276,43 @@ export default function OrdersPage({token}) {
     }
 
     try {
-      //const token = localStorage.getItem("token");
-      
       const formData = new URLSearchParams();
-      formData.append("text", textValue);
-      formData.append("comment", textValue);
-      formData.append("tresc", textValue);
-      
-      if (token) {
-        
-        const res = await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
+      formData.append("text", comment);
+      formData.append("comment", comment);
+      formData.append("tresc", comment);
+
+      const res = await fetch(
+        `http://127.0.0.1:8000/comments/${selectedOrder.id}/`,
+        {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
             Authorization: `Bearer ${token}`,
           },
           body: formData.toString(),
-        });
-        
-        if (!res.ok) {
-          const text = await res.text();
-          let parsed;
-          try { parsed = JSON.parse(text); } catch { parsed = text; }
-          throw new Error((parsed && parsed.error) ? parsed.error : text || res.status);
         }
-      } else {
-        const csrftoken = getCookie("csrftoken");
-        const form = new FormData();
-        form.append("text", comment);
+      );
 
-        await fetch(`http://127.0.0.1:8000/comments/${selectedOrder.id}/`, {
-          method: "POST",
-          credentials: "include",
-          headers: {Authorization: `Bearer ${token}` },
-          body: form,
-        });
+      if (!res.ok) {
+        const text = await res.text();
+        let parsed;
+        try {
+          parsed = JSON.parse(text);
+        } catch {
+          parsed = text;
+        }
+        throw new Error(
+          parsed && parsed.error ? parsed.error : text || res.status
+        );
       }
 
       await fetchComments(selectedOrder.id);
       setComment("");
-
     } catch (err) {
       alert("Błąd podczas dodawania komentarza");
     }
   };
 
-  // ----------------------------------------------
-  // SEARCH FILTER
-  // ----------------------------------------------
   const filteredOrders = orders.filter(
     (order) =>
       (order.numer || "")
@@ -357,15 +325,13 @@ export default function OrdersPage({token}) {
         .includes(searchTerm.toLowerCase())
   );
 
-  // ----------------------------------------------
   // DETAIL VIEW
-  // ----------------------------------------------
   if (selectedOrderDetail) {
     return (
       <OrderDetailPage
         orderId={selectedOrderDetail.id}
         onBack={() => setSelectedOrderDetail(null)}
-        token = {token}
+        token={token}
       />
     );
   }
@@ -373,11 +339,15 @@ export default function OrdersPage({token}) {
   if (loading) return <div>Ładowanie...</div>;
   if (!orders.length) return <div>Brak zamówień.</div>;
 
-  // ----------------------------------------------
-  // RENDER PAGE
-  // ----------------------------------------------
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginTop: 52 }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        marginTop: 52,
+      }}
+    >
       <h2 style={{ color: "#111", marginBottom: 24 }}>Tabela Zamówień</h2>
 
       <div style={{ width: "90%", marginBottom: 20 }}>
@@ -397,29 +367,53 @@ export default function OrdersPage({token}) {
         />
       </div>
 
-      <div style={{ width: "100%", overflowX: "auto", marginBottom: 32 }}>
+      <div
+        style={{
+          width: "100%",
+          overflowX: "auto",
+          marginBottom: 32,
+        }}
+      >
         <table
           className="orders-table table text-dark"
           style={{ minWidth: 900, width: "fit-content", margin: "0 auto" }}
         >
           <thead>
             <tr>
-              <th onClick={() => handleSort("numer")} style={{ cursor: "pointer" }}>
+              <th
+                onClick={() => handleSort("numer")}
+                style={{ cursor: "pointer" }}
+              >
                 Numer {getSortIndicator("numer")}
               </th>
-              <th onClick={() => handleSort("osoba")} style={{ cursor: "pointer" }}>
+              <th
+                onClick={() => handleSort("osoba")}
+                style={{ cursor: "pointer" }}
+              >
                 Osoba {getSortIndicator("osoba")}
               </th>
-              <th onClick={() => handleSort("cena")} style={{ cursor: "pointer" }}>
+              <th
+                onClick={() => handleSort("cena")}
+                style={{ cursor: "pointer" }}
+              >
                 Wartość {getSortIndicator("cena")}
               </th>
-              <th onClick={() => handleSort("data_zamowienia")} style={{ cursor: "pointer" }}>
+              <th
+                onClick={() => handleSort("data_zamowienia")}
+                style={{ cursor: "pointer" }}
+              >
                 Data zamówienia {getSortIndicator("data_zamowienia")}
               </th>
-              <th onClick={() => handleSort("comments_count_num")} style={{ cursor: "pointer" }}>
+              <th
+                onClick={() => handleSort("comments_count_num")}
+                style={{ cursor: "pointer" }}
+              >
                 Komentarze {getSortIndicator("comments_count_num")}
               </th>
-              <th onClick={() => handleSort("data_oczekiwana")} style={{ cursor: "pointer" }}>
+              <th
+                onClick={() => handleSort("data_oczekiwana")}
+                style={{ cursor: "pointer" }}
+              >
                 Deadline {getSortIndicator("data_oczekiwana")}
               </th>
               <th>Status</th>
@@ -432,9 +426,16 @@ export default function OrdersPage({token}) {
               <tr
                 key={order.id}
                 onClick={() => setSelectedOrderDetail(order)}
-                style={{ cursor: "pointer", transition: "background-color 0.2s" }}
-                onMouseEnter={(ev) => (ev.currentTarget.style.backgroundColor = "#f0f0f0")}
-                onMouseLeave={(ev) => (ev.currentTarget.style.backgroundColor = "")}
+                style={{
+                  cursor: "pointer",
+                  transition: "background-color 0.2s",
+                }}
+                onMouseEnter={(ev) =>
+                  (ev.currentTarget.style.backgroundColor = "#f0f0f0")
+                }
+                onMouseLeave={(ev) =>
+                  (ev.currentTarget.style.backgroundColor = "")
+                }
               >
                 <td>{order.numer}</td>
                 <td>{order.osoba || "Brak"}</td>
@@ -459,11 +460,15 @@ export default function OrdersPage({token}) {
                   <select
                     value={order.statusNormalized}
                     onChange={(e) => {
-                      if (window.confirm("Czy na pewno chcesz zastosować zmiany?")) {
+                      e.stopPropagation();
+                      if (
+                        window.confirm(
+                          "Czy na pewno chcesz zastosować zmiany?"
+                        )
+                      ) {
                         updateOrderStatus(order.id, e.target.value);
                       } else {
-                        // zamiast loadOrders();
-                        setReloadFlag(prev => !prev);
+                        setReloadFlag((prev) => !prev);
                       }
                     }}
                     style={{
@@ -475,7 +480,9 @@ export default function OrdersPage({token}) {
                       color: "#111",
                     }}
                   >
-                    <option value="Brak" hidden>Brak</option>
+                    <option value="Brak" hidden>
+                      Brak
+                    </option>
                     <option value="Oczekiwanie">Oczekiwanie</option>
                     <option value="W trakcie">W trakcie</option>
                     <option value="Zrealizowane">Zrealizowane</option>
@@ -485,7 +492,8 @@ export default function OrdersPage({token}) {
                 <td onClick={(ev) => ev.stopPropagation()}>
                   <button
                     className="btn report-btn"
-                    onClick={() => {
+                    onClick={(ev) => {
+                      ev.stopPropagation();
                       setSelectedOrder(order);
                       fetchComments(order.id);
                       setShowModal(true);
@@ -500,7 +508,14 @@ export default function OrdersPage({token}) {
         </table>
 
         {/* PAGINATION */}
-        <div style={{ display: "flex", justifyContent: "center", marginTop: 20, gap: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            marginTop: 20,
+            gap: 10,
+          }}
+        >
           <button
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
@@ -552,8 +567,15 @@ export default function OrdersPage({token}) {
               boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
             }}
           >
-            <h3 style={{ marginBottom: 10, textAlign: "center", color: "#111" }}>
-              Komentarze dla zamówienia: <strong>{selectedOrder.numer}</strong>
+            <h3
+              style={{
+                marginBottom: 10,
+                textAlign: "center",
+                color: "#111",
+              }}
+            >
+              Komentarze dla zamówienia:{" "}
+              <strong>{selectedOrder.numer}</strong>
             </h3>
 
             <div style={{ marginBottom: 12 }}>
@@ -562,8 +584,17 @@ export default function OrdersPage({token}) {
               ) : commentsList.length ? (
                 <ul style={{ paddingLeft: 16 }}>
                   {commentsList.map((c) => (
-                    <li key={c.id ?? Math.random()} style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: "1rem", color: "#111", whiteSpace: "pre-wrap" }}>
+                    <li
+                      key={c.id ?? Math.random()}
+                      style={{ marginBottom: 8 }}
+                    >
+                      <div
+                        style={{
+                          fontSize: "1rem",
+                          color: "#111",
+                          whiteSpace: "pre-wrap",
+                        }}
+                      >
                         {c.text ?? c.comment ?? ""}
                       </div>
                       <small style={{ color: "#444" }}>
@@ -593,11 +624,25 @@ export default function OrdersPage({token}) {
                 }}
               />
 
-              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10 }}>
-                <button onClick={handleAddComment} className="btn report-btn" style={{ width: "48%" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginTop: 10,
+                }}
+              >
+                <button
+                  onClick={handleAddComment}
+                  className="btn report-btn"
+                  style={{ width: "48%" }}
+                >
                   Dodaj
                 </button>
-                <button onClick={() => setShowModal(false)} className="btn report-btn" style={{ width: "48%" }}>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="btn report-btn"
+                  style={{ width: "48%" }}
+                >
                   Zamknij
                 </button>
               </div>

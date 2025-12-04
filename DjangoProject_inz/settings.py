@@ -82,8 +82,8 @@ DATABASES = {
         #'NAME': 'produkcja_zlecenia',
         'NAME': 'anonimowe',
         'USER': 'root',
-        'PASSWORD': 'A113bojaknietoco', #jeśli nie ma się hasła, to odkomentować to zakomwentoweać linijkę niżej
-        #'PASSWORD': 'domiolik2', # jeśli to jest moje hasło - Oliwia - zostawić tak jak jest inaczej wykomentować 
+        #'PASSWORD': 'A113bojaknietoco', #jeśli nie ma się hasła, to odkomentować to zakomwentoweać linijkę niżej
+        'PASSWORD': 'domiolik2', # jeśli to jest moje hasło - Oliwia - zostawić tak jak jest inaczej wykomentować 
         #ale prosze nie usuwajcie, bo mi się nie chce za każdym razem sprawdzać jakie mam hasło do bazy
         'HOST': 'localhost',
         'PORT': '3306',
@@ -141,3 +141,9 @@ CSRF_TRUSTED_ORIGINS = [
 
 CSRF_COOKIE_SECURE = False  # Włączone tylko w HTTPS
 CORS_ALLOW_CREDENTIALS = True
+
+REST_FRAMEWORK = {
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 100,
+    "PAGE_SIZE_QUERY_PARAM": "page_size",
+}

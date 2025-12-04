@@ -30,3 +30,16 @@ class Zlecenia(models.Model):
 
     class Meta:
         db_table = 'zlecenia'
+
+from django.db import models
+
+class Order(models.Model):
+    numer = models.CharField(max_length=100)
+    osoba = models.CharField(max_length=100, blank=True, null=True)
+    cena = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    data_zamowienia = models.DateField(blank=True, null=True)
+    data_oczekiwana = models.DateField(blank=True, null=True)
+    status = models.CharField(max_length=50, default="Brak")
+
+    def __str__(self):
+        return str(self.numer)
