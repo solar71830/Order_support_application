@@ -188,13 +188,6 @@ export default function OrderDetailPage({ orderId, onBack, token }) {
         <button
           onClick={onBack}
           className="btn report-btn"
-          // style={{
-          //   border: "none",
-          //   padding: "10px 20px",
-          //   borderRadius: "8px",
-          //   cursor: "pointer",
-          //   marginBottom: "20px",
-          // }}
         >
           ← Powrót do listy zamówień
         </button>
@@ -271,7 +264,7 @@ export default function OrderDetailPage({ orderId, onBack, token }) {
             <strong>Status:</strong> {order.status || "Brak"}
           </div>
           <div>
-            <strong>Data potwierdzenia:</strong> {order.data_oczekiwana || "Brak"}
+            <strong>Data potwierdzenia:</strong> {order.data_zamowienia || "Brak"}
           </div>
           <div>
             <strong>Deadline:</strong> {order.data_potwierdzona || "Brak"}
@@ -348,7 +341,15 @@ export default function OrderDetailPage({ orderId, onBack, token }) {
                   borderBottom: "1px solid #eee",
                 }}
               >
-                <div style={{ color: "#111", fontWeight: "bold" }}>{c.text ?? c.comment ?? ""}</div>
+                <div
+                  style={{
+                    color: "#111",
+                    fontWeight: "bold",
+                    whiteSpace: "pre-line",   // <-- DODAĆ TO
+                  }}
+                >
+                {c.text ?? c.comment ?? ""}
+                </div>
                 <small style={{ color: "#666" }}>
                   {c.date ?? c.created_at ?? ""}
                 </small>
@@ -394,23 +395,6 @@ export default function OrderDetailPage({ orderId, onBack, token }) {
             }}
           />
         </div>
-        {/* <div style={{ marginBottom: "10px" }}>
-          <label style={{ display: "block", marginBottom: "5px", color: "#111", fontWeight: "bold" }}>
-            Deadline (opcjonalnie)
-          </label>
-          <input
-            type="date"
-            value={commentDeadline}
-            onChange={(e) => setCommentDeadline(e.target.value)}
-            style={{
-              padding: "10px",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              backgroundColor: "#fff",
-              color: "#111",
-            }}
-          />
-        </div> */}
         <button
           onClick={handleAddComment}
           style={{

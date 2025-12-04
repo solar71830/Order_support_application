@@ -34,7 +34,16 @@ export default function EditUser({ token, users }) {
     return (
         <form onSubmit={handleSubmit} className="user-form">
             <h2>Edycja użytkownika</h2>
-            <select value={username} onChange={e => setUsername(e.target.value)} required>
+            <select value={username} onChange={e => setUsername(e.target.value)} 
+            style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
+                required>
                 <option value="">Wybierz użytkownika</option>
                 {users.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
@@ -43,6 +52,14 @@ export default function EditUser({ token, users }) {
                 placeholder="Nazwa użytkownika"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
                 required
             />
             <input
@@ -50,18 +67,42 @@ export default function EditUser({ token, users }) {
                 placeholder="Nowy email (opcjonalnie)"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
             />
             <input
                 type="password"
                 placeholder="Nowe hasło (opcjonalnie)"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
             />
             <input
                 type="text"
                 placeholder="Nowe stanowisko (opcjonalnie)"
                 value={position}
                 onChange={e => setPosition(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
             />
             <button type="submit" className="blue-btn form-btn">Edytuj użytkownika</button>
             {message && <div>{message}</div>}

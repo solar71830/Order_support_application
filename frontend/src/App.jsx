@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import "./App.css";
 import Template from "./pages/Template";
 import OrdersPage from "./pages/OrdersPage";
-import WorkPage from "./pages/WorkPage";
 import NewsPage from "./pages/NewsPage";
 import ReportsPage from "./pages/ReportsPage";
 import Login from "./pages/Login";

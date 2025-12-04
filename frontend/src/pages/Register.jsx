@@ -41,6 +41,14 @@ export default function Register(token) {
                 placeholder="Nazwa użytkownika"
                 value={username}
                 onChange={e => setUsername(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
                 required
             />
             <input
@@ -48,6 +56,14 @@ export default function Register(token) {
                 placeholder="Hasło"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
                 required
             />
             <input
@@ -55,6 +71,14 @@ export default function Register(token) {
                 placeholder="Email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
                 required
             />
             <input
@@ -62,6 +86,14 @@ export default function Register(token) {
                 placeholder="Stanowisko (opcjonalnie)"
                 value={position}
                 onChange={e => setPosition(e.target.value)}
+                style={{
+                    width: "90%",
+                    padding: "10px",
+                    border: "1px solid #ccc",
+                    borderRadius: "8px",
+                    backgroundColor: "#fff",
+                    color: "#111",
+                }}
             />
             <button type="submit" className="blue-btn form-btn">Zarejestruj</button>
             {message && <div>{message}</div>}
