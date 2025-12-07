@@ -45,29 +45,25 @@ def jwt_required(func):
 
 
 # ===============================
-#  API ORDERS — PAGINACJA ZLECENIA
+#  API ORDERS — ZWRACA WSZYSTKIE
 # ===============================
 @csrf_exempt
 @jwt_required
 def orders(request):
-    page = int(request.GET.get("page", 1))
-    page_size = int(request.GET.get("page_size", 100))
 
-    queryset = Zlecenia.objects.all().order_by("id")  # ← WŁAŚCIWA TABELA
+    # Pobierz WSZYSTKIE zamówienia — BEZ paginacji
+    queryset = Zlecenia.objects.all().order_by("id")
 
-    paginator = Paginator(queryset, page_size)
-    page_obj = paginator.get_page(page)
+    results = list(queryset.values())
 
-    results = list(page_obj.object_list.values())
+    # Uzupełnij brakujące pola, jeśli potrzebne
+    for r in results:
+        r.setdefault("data_oczekiwana", None)
+        r.setdefault("comments_count", 0)
 
-    return JsonResponse({
-        "count": paginator.count,
-        "total_pages": paginator.num_pages,
-        "current_page": page_obj.number,
-        "next": page_obj.has_next(),
-        "previous": page_obj.has_previous(),
-        "results": results
-    })
+    # Frontend oczekuje LISTY, nie paginatora
+    return JsonResponse(results, safe=False)
+
 
 
 # ===============================

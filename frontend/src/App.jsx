@@ -110,7 +110,7 @@ function App() {
             if (active === "manageusers") page = <ManageUsers token={token} />;
         } else {
             if (active === "account") page = <AccountInfo token={token} username_new={username_new}/>;
-            if (active === "orders") page = <OrdersPage orders={orders} />;
+            if (active === "orders") page = <OrdersPage orders={orders} token={token}/>;
             if (active === "news") page = <NewsPage />;
             if (active === "reports") page = <ReportsPage />;
         }

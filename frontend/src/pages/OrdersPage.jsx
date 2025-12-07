@@ -6,8 +6,7 @@ export default function OrdersPage({ token }) {
   const [page, setPage] = useState(1);
   const pageSize = 100;
 
-  const [totalCount, setTotalCount] = useState(0);
-  const [orders, setOrders] = useState([]);
+  const [allOrders, setAllOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
@@ -21,17 +20,31 @@ export default function OrdersPage({ token }) {
 
   const [selectedOrderDetail, setSelectedOrderDetail] = useState(null);
   const [reloadFlag, setReloadFlag] = useState(false);
-  
 
-  // LOAD ORDERS
+  // LOAD ALL ORDERS ONCE
   useEffect(() => {
-    loadOrders();
-  }, [page, reloadFlag]);
+    setLoading(true);
+
+    fetch(`http://127.0.0.1:8000/api/orders/`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        const results = data.results || (Array.isArray(data) ? data : []);
+        const normalized = results.map(normalizeOrder);
+        setAllOrders(normalized);
+      })
+      .catch((err) => {
+        console.error("Błąd pobierania zamówień:", err);
+        setAllOrders([]);
+      })
+      .finally(() => setLoading(false));
+  }, [token, reloadFlag]);
 
   const daysUntilDeadline = (o) => {
-    if (!o || !o.data_oczekiwana) return null;
+    if (!o || !o.data_potwierdzona) return null;
     const today = new Date();
-    const deadline = new Date(o.data_oczekiwana);
+    const deadline = new Date(o.data_potwierdzona);
 
     today.setHours(0, 0, 0, 0);
     deadline.setHours(0, 0, 0, 0);
@@ -48,8 +61,7 @@ export default function OrdersPage({ token }) {
 
     const data_potwierdzona =
       o.data_potwierdzona ??
-      o.deadline ??
-      o.data_oczekiwana ??
+      o.data_zamowienia ??
       null;
 
     let status = o.status ?? o.stan ?? "Brak";
@@ -57,12 +69,7 @@ export default function OrdersPage({ token }) {
 
     const timeDiff = daysUntilDeadline(o);
 
-    const commentsCount =
-      Number(
-        o.comments_count ??
-          (Array.isArray(o.comments) && o.comments.length) ??
-          0
-      );
+    const commentsCount = Number(o.comments_count ?? 0);
 
     return {
       ...o,
@@ -77,77 +84,10 @@ export default function OrdersPage({ token }) {
     };
   };
 
-  const loadOrders = () => {
-    setLoading(true);
-
-    fetch(
-      `http://127.0.0.1:8000/api/orders/?page=${page}&page_size=${pageSize}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        const results = data.results || (Array.isArray(data) ? data : []);
-        const normalized = results.map(normalizeOrder);
-
-        setOrders(normalized);
-
-        if (typeof data.count === "number") {
-          setTotalCount(data.count);
-        } else if (data.next || data.previous) {
-          setTotalCount(page * pageSize + results.length);
-        } else {
-          setTotalCount(results.length);
-        }
-
-        Promise.allSettled(
-          normalized.map((o) =>
-            fetch(`http://127.0.0.1:8000/comments/${o.id}/`, {
-              headers: { Authorization: `Bearer ${token}` },
-            })
-              .then((r) => r.json().catch(() => []))
-              .then((arr) => ({
-                id: o.id,
-                count: Array.isArray(arr) ? arr.length : 0,
-              }))
-              .catch(() => ({ id: o.id, count: 0 }))
-          )
-        ).then((results) => {
-          const counts = results
-            .filter((x) => x.status === "fulfilled")
-            .map((x) => x.value);
-
-          setOrders((prev) =>
-            prev.map((o) => {
-              const found = counts.find((c) => c.id === o.id);
-              return found
-                ? {
-                    ...o,
-                    comments_count: found.count,
-                    comments_count_num: found.count,
-                  }
-                : o;
-            })
-          );
-        });
-      })
-      .catch((err) => {
-        console.error("Błąd pobierania zamówień:", err);
-        setOrders([]);
-      })
-      .finally(() => setLoading(false));
-  };
-
-  const getCookie = (name) => {
-    const match = document.cookie.match(
-      new RegExp("(^|; )" + name + "=([^;]*)")
-    );
-    return match ? decodeURIComponent(match[2]) : null;
-  };
-
   const fetchComments = (orderId) => {
     setCommentsLoading(true);
     return fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}` }
     })
       .then(async (res) => {
         if (!res.ok) return [];
@@ -162,7 +102,7 @@ export default function OrdersPage({ token }) {
 
         setCommentsList(list);
 
-        setOrders((prev) =>
+        setAllOrders((prev) =>
           prev.map((o) =>
             o.id === orderId
               ? {
@@ -190,7 +130,7 @@ export default function OrdersPage({ token }) {
     }
     setSortConfig({ key, direction });
 
-    const sorted = [...orders].sort((a, b) => {
+    const sorted = [...allOrders].sort((a, b) => {
       let va = a[key];
       let vb = b[key];
 
@@ -212,15 +152,15 @@ export default function OrdersPage({ token }) {
         return direction === "asc" ? na - nb : nb - na;
       }
 
-      const sa = (va ?? "").toString().toLowerCase();
-      const sb = (vb ?? "").toString().toLowerCase();
+      const sa = (va || "").toLowerCase();
+      const sb = (vb || "").toLowerCase();
 
       if (sa < sb) return direction === "asc" ? -1 : 1;
       if (sa > sb) return direction === "asc" ? 1 : -1;
       return 0;
     });
 
-    setOrders(sorted);
+    setAllOrders(sorted);
   };
 
   const getSortIndicator = (key) => {
@@ -245,7 +185,6 @@ export default function OrdersPage({ token }) {
     return "#28a745";
   };
 
-  // UPDATE ORDER STATUS
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       const formUpdateData = new URLSearchParams();
@@ -266,7 +205,6 @@ export default function OrdersPage({ token }) {
     }
   };
 
-  // ADD COMMENT
   const handleAddComment = async () => {
     if (!selectedOrder) return;
 
@@ -277,9 +215,7 @@ export default function OrdersPage({ token }) {
 
     try {
       const formData = new URLSearchParams();
-      formData.append("text", comment);
       formData.append("comment", comment);
-      formData.append("tresc", comment);
 
       const res = await fetch(
         `http://127.0.0.1:8000/comments/${selectedOrder.id}/`,
@@ -293,18 +229,7 @@ export default function OrdersPage({ token }) {
         }
       );
 
-      if (!res.ok) {
-        const text = await res.text();
-        let parsed;
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          parsed = text;
-        }
-        throw new Error(
-          parsed && parsed.error ? parsed.error : text || res.status
-        );
-      }
+      if (!res.ok) throw new Error("Błąd dodawania komentarza");
 
       await fetchComments(selectedOrder.id);
       setComment("");
@@ -313,19 +238,18 @@ export default function OrdersPage({ token }) {
     }
   };
 
-  const filteredOrders = orders.filter(
+  // FILTER + PAGINATION
+  const filteredOrders = allOrders.filter(
     (order) =>
-      (order.numer || "")
-        .toString()
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (order.osoba || "")
-        .toString()
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
+      (order.numer || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.osoba || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // DETAIL VIEW
+  const pageOrders = filteredOrders.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
+
   if (selectedOrderDetail) {
     return (
       <OrderDetailPage
@@ -337,7 +261,7 @@ export default function OrdersPage({ token }) {
   }
 
   if (loading) return <div>Ładowanie...</div>;
-  if (!orders.length) return <div>Brak zamówień.</div>;
+  if (!allOrders.length) return <div>Brak zamówień.</div>;
 
   return (
     <div
@@ -350,12 +274,16 @@ export default function OrdersPage({ token }) {
     >
       <h2 style={{ color: "#111", marginBottom: 24 }}>Tabela Zamówień</h2>
 
+      {/* SEARCH */}
       <div style={{ width: "90%", marginBottom: 20 }}>
         <input
           type="text"
           placeholder="Wyszukaj zamówienie po numerze lub osobie..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            setPage(1);
+            setSearchTerm(e.target.value);
+          }}
           style={{
             width: "100%",
             padding: 10,
@@ -380,22 +308,13 @@ export default function OrdersPage({ token }) {
         >
           <thead>
             <tr>
-              <th
-                onClick={() => handleSort("numer")}
-                style={{ cursor: "pointer" }}
-              >
-                Numer {getSortIndicator("numer")}
+              <th onClick={() => handleSort("numer")} style={{ cursor: "pointer" }}>
+                Numer zamówienia {getSortIndicator("numer")}
               </th>
-              <th
-                onClick={() => handleSort("osoba")}
-                style={{ cursor: "pointer" }}
-              >
+              <th onClick={() => handleSort("osoba")} style={{ cursor: "pointer" }}>
                 Osoba {getSortIndicator("osoba")}
               </th>
-              <th
-                onClick={() => handleSort("cena")}
-                style={{ cursor: "pointer" }}
-              >
+              <th onClick={() => handleSort("cena")} style={{ cursor: "pointer" }}>
                 Wartość {getSortIndicator("cena")}
               </th>
               <th
@@ -411,10 +330,10 @@ export default function OrdersPage({ token }) {
                 Komentarze {getSortIndicator("comments_count_num")}
               </th>
               <th
-                onClick={() => handleSort("data_oczekiwana")}
+                onClick={() => handleSort("data_potwierdzona")}
                 style={{ cursor: "pointer" }}
               >
-                Deadline {getSortIndicator("data_oczekiwana")}
+                Deadline {getSortIndicator("data_potwierdzona")}
               </th>
               <th>Status</th>
               <th>Dodaj Komentarz</th>
@@ -422,7 +341,7 @@ export default function OrdersPage({ token }) {
           </thead>
 
           <tbody>
-            {filteredOrders.map((order) => (
+            {pageOrders.map((order) => (
               <tr
                 key={order.id}
                 onClick={() => setSelectedOrderDetail(order)}
@@ -441,7 +360,6 @@ export default function OrdersPage({ token }) {
                 <td>{order.osoba || "Brak"}</td>
                 <td>{order.cena}</td>
                 <td>{order.data_zamowienia}</td>
-
                 <td>{order.comments_count ?? 0}</td>
 
                 <td
@@ -462,9 +380,7 @@ export default function OrdersPage({ token }) {
                     onChange={(e) => {
                       e.stopPropagation();
                       if (
-                        window.confirm(
-                          "Czy na pewno chcesz zastosować zmiany?"
-                        )
+                        window.confirm("Czy na pewno chcesz zastosować zmiany?")
                       ) {
                         updateOrderStatus(order.id, e.target.value);
                       } else {
@@ -525,11 +441,11 @@ export default function OrdersPage({ token }) {
           </button>
 
           <span style={{ fontWeight: "bold", color: "black" }}>
-            Strona {page} / {Math.ceil(totalCount / pageSize)}
+            Strona {page} / {Math.ceil(filteredOrders.length / pageSize)}
           </span>
 
           <button
-            disabled={page >= Math.ceil(totalCount / pageSize)}
+            disabled={page >= Math.ceil(filteredOrders.length / pageSize)}
             onClick={() => setPage(page + 1)}
             className="btn report-btn"
           >
@@ -584,10 +500,7 @@ export default function OrdersPage({ token }) {
               ) : commentsList.length ? (
                 <ul style={{ paddingLeft: 16 }}>
                   {commentsList.map((c) => (
-                    <li
-                      key={c.id ?? Math.random()}
-                      style={{ marginBottom: 8 }}
-                    >
+                    <li key={c.id ?? Math.random()} style={{ marginBottom: 8 }}>
                       <div
                         style={{
                           fontSize: "1rem",
@@ -595,7 +508,7 @@ export default function OrdersPage({ token }) {
                           whiteSpace: "pre-wrap",
                         }}
                       >
-                        {c.text ?? c.comment ?? ""}
+                        {c.text ?? ""}
                       </div>
                       <small style={{ color: "#444" }}>
                         {c.date ?? c.created_at ?? ""}
