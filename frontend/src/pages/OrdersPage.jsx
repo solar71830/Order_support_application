@@ -29,10 +29,21 @@ export default function OrdersPage({ token }) {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         const results = data.results || (Array.isArray(data) ? data : []);
         const normalized = results.map(normalizeOrder);
-        setAllOrders(normalized);
+        const withComments = await Promise.all(
+          normalized.map(async (order) => {
+            const count = await fetchCommentsCount(order.id);
+            return {
+              ...order,
+              comments_count: count,
+              comments_count_num: count,
+            };
+          })
+        );
+
+        setAllOrders(withComments);
       })
       .catch((err) => {
         console.error("Błąd pobierania zamówień:", err);
@@ -123,6 +134,28 @@ export default function OrdersPage({ token }) {
       .finally(() => setCommentsLoading(false));
   };
 
+  const fetchCommentsCount = async (orderId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/comments/${orderId}/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!res.ok) return 0;
+
+      const data = await res.json();
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray(data.comments)
+        ? data.comments
+        : [];
+
+      return list.length;
+    } catch {
+      return 0;
+    }
+  };
+
+
   const handleSort = (key) => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -161,6 +194,7 @@ export default function OrdersPage({ token }) {
     });
 
     setAllOrders(sorted);
+    setPage(1);
   };
 
   const getSortIndicator = (key) => {
